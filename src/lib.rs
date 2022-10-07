@@ -31,55 +31,57 @@ struct Grammar {
     rules: Vec<Rule>,
 }
 
-struct LR1Item {
-    rule: Rule,
+struct LR1Item<'a> {
+    rule: &'a Rule,
     position: u32,
 }
 
-struct NonDeterministicLR1Automaton {
-    edges: HashMap<(LR1Item, LR1Item), TermOrEmpty>,
+struct NonDeterministicLR1Automaton<'a> {
+    edges: HashMap<(LR1Item<'a>, LR1Item<'a>), TermOrEmpty>,
 }
 
-impl NonDeterministicLR1Automaton {
-    fn from_grammar(grammar: &Grammar) -> NonDeterministicLR1Automaton {
+impl<'a> NonDeterministicLR1Automaton<'_> {
+    fn from_grammar(grammar: &'a Grammar) -> NonDeterministicLR1Automaton<'a> {
         panic!("not implemented");
     }
 }
 
-struct DetermenisticLR1Automaton {
-    edges: HashMap<(LR1Item, LR1Item), Term>
+struct DetermenisticLR1Automaton<'a> {
+    edges: HashMap<(LR1Item<'a>, LR1Item<'a>), Term>,
 }
 
-impl DetermenisticLR1Automaton {
-    fn from_non_deterministic(automaton: &NonDeterministicLR1Automaton) -> DetermenisticLR1Automaton {
+impl<'a> DetermenisticLR1Automaton<'_> {
+    fn from_non_deterministic(
+        automaton: &'a NonDeterministicLR1Automaton,
+    ) -> DetermenisticLR1Automaton<'a> {
         panic!("not implemented");
     }
 }
 
-enum LR1Action {
+enum LR1Action<'a> {
     Reduce(Rule),
-    Shift(LR1Item),
+    Shift(LR1Item<'a>),
     Accept,
 }
 
-struct ParseTables {
-    action: HashMap<(LR1Item, TerminalOrFinish), LR1Action>,
-    goto: HashMap<(LR1Item, Nonterminal), LR1Item>,
+struct ParseTables<'a> {
+    action: HashMap<(LR1Item<'a>, TerminalOrFinish), LR1Action<'a>>,
+    goto: HashMap<(LR1Item<'a>, Nonterminal), LR1Item<'a>>,
 }
 
-impl ParseTables {
-    fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
+impl<'a> ParseTables<'_> {
+    fn from_automaton(automaton: &'a DetermenisticLR1Automaton) -> ParseTables<'a> {
         panic!("not implemented");
     }
 }
 
-enum ParseTree<T> {
-    Internal(Nonterminal, Vec<ParseTree<T>>),
-    Leaf(Token<T>),
+enum ParseTree<'a, T> {
+    Internal(Nonterminal, Vec<ParseTree<'a, T>>),
+    Leaf(&'a Token<T>),
 }
 
-impl <T> ParseTree<T> {
-    fn from_tables_and_tokens(tables: &ParseTables, tokens: &[Token<T>]) -> ParseTree<T> {
+impl<'a, 'b, T> ParseTree<'_, T> {
+    fn from_tables_and_tokens(tables: &'a ParseTables, tokens: &'b [Token<T>]) -> ParseTree<'b, T> {
         panic!("not implemented");
     }
 }
