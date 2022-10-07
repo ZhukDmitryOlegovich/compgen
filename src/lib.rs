@@ -59,7 +59,7 @@ impl<'a> DetermenisticLR1Automaton<'_> {
 }
 
 enum LR1Action<'a> {
-    Reduce(Rule),
+    Reduce(&'a Rule),
     Shift(LR1Item<'a>),
     Accept,
 }
