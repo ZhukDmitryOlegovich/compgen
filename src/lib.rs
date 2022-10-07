@@ -38,10 +38,51 @@ enum TermOrEmpty {
     Empty,
 }
 
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+enum TermOrFinish {
+    Term(Term),
+    Finish,
+}
+
+impl TermOrFinish {
+    fn from_terminal_or_finish(term: &TerminalOrFinish) -> TermOrFinish {
+        match term {
+            TerminalOrFinish::Finish => TermOrFinish::Finish,
+            TerminalOrFinish::Terminal(t) => TermOrFinish::Term(Term::Terminal(t.clone())),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 enum TerminalOrFinish {
     Terminal(Terminal),
     Finish,
+}
+
+impl TerminalOrFinish {
+    fn from_terminal_or_empty(term: &TerminalOrEmpty) -> Option<TerminalOrFinish> {
+        match term {
+            TerminalOrEmpty::Terminal(t) => Some(TerminalOrFinish::Terminal(t.clone())),
+            TerminalOrEmpty::Empty => None,
+        }
+    }
+
+    fn from_term_or_finish(term: &TermOrFinish) -> Option<TerminalOrFinish> {
+        match term {
+            TermOrFinish::Term(Term::Terminal(t)) => Some(TerminalOrFinish::Terminal(t.clone())),
+            TermOrFinish::Finish => Some(TerminalOrFinish::Finish),
+            _ => None,
+        }
+    }
+}
+
+impl ToString for TerminalOrFinish {
+    fn to_string(&self) -> String {
+        match self {
+            TerminalOrFinish::Terminal(t) => t.0.clone(),
+            TerminalOrFinish::Finish => String::from("$"),
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
@@ -87,7 +128,7 @@ impl ToString for LR1Item<'_> {
         if i == self.position {
             right_str.push('^');
         }
-        String::from(format!("{} -> {}", self.rule.left.0, right_str))
+        String::from(format!("{} -> {}, {}", self.rule.left.0, right_str, self.lookup.to_string()))
     }
 }
 
@@ -97,49 +138,32 @@ struct NonDeterministicLR1Automaton<'a> {
 
 impl NonDeterministicLR1Automaton<'_> {
     fn from_grammar<'a>(grammar: &'a Grammar) -> NonDeterministicLR1Automaton<'a> {
-        // let mut by_left: HashMap<Nonterminal, Vec<&Rule>> = HashMap::new();
-        // for rule in &grammar.rules {
-        //     match by_left.get_mut(&rule.left) {
-        //         Some(v) => {
-        //             v.push(rule);
-        //         }
-        //         None => {
-        //             by_left.insert(rule.left.clone(), vec![rule]);
-        //         }
-        //     }
-        // }
+        let mut by_left: HashMap<Nonterminal, Vec<&Rule>> = HashMap::new();
+        for rule in &grammar.rules {
+            match by_left.get_mut(&rule.left) {
+                Some(v) => {
+                    v.push(rule);
+                }
+                None => {
+                    by_left.insert(rule.left.clone(), vec![rule]);
+                }
+            }
+        }
         let mut edges = HashMap::new();
-        // for rule in &grammar.rules {
-        //     for position in 0..rule.right.len() as u32 + 1 {
-        //         let item = LR1Item { rule, position };
-        //         let mut adjacent = HashMap::new();
-        //         if position < rule.right.len() as u32 {
-        //             let next = LR1Item {
-        //                 rule,
-        //                 position: position + 1,
-        //             };
-        //             let term = &rule.right[position as usize];
-        //             adjacent.insert(next, TermOrEmpty::Term(term.clone()));
-        //             if let Term::Nonterminal(nt) = term {
-        //                 for next_rule in &by_left[nt] {
-        //                     let next = LR1Item {
-        //                         rule: next_rule,
-        //                         position: 0,
-        //                     };
-        //                     adjacent.insert(next, TermOrEmpty::Empty);
-        //                 }
-        //             }
-        //         }
-        //         edges.insert(item, adjacent);
-        //     }
-        // }
+        let first = calculate_first(grammar);
+        let start = &LR1Item {
+            rule: by_left[&Nonterminal(String::from(GRAMMAR_AXIOM_NAME))][0],
+            position: 0,
+            lookup: TerminalOrFinish::Finish,
+        };
+        NonDeterministicLR1Automaton::from_grammar_rec(start, &mut edges, &by_left, &first);
         NonDeterministicLR1Automaton { edges }
     }
 
     fn from_grammar_rec<'a>(
         cur: &LR1Item<'a>,
         edges: &mut HashMap<LR1Item<'a>, HashMap<LR1Item<'a>, TermOrEmpty>>,
-        by_left: &'a HashMap<Nonterminal, Vec<&Rule>>,
+        by_left: &HashMap<Nonterminal, Vec<&'a Rule>>,
         first: &HashMap<Nonterminal, HashSet<TerminalOrEmpty>>,
     ) {
         if edges.contains_key(cur) {
@@ -157,33 +181,31 @@ impl NonDeterministicLR1Automaton<'_> {
             fst.insert(next.clone(), TermOrEmpty::Term(term.clone()));
             NonDeterministicLR1Automaton::from_grammar_rec(&next, edges, by_left, first);
             if let Term::Nonterminal(nterm) = term {
-                for term in &cur.rule.right[(cur.position + 1) as usize..] {
-                    let lookups: HashSet<TerminalOrEmpty>;
+                let mut next_terms: Vec<TermOrFinish> = cur.rule.right
+                    [(cur.position + 1) as usize..]
+                    .iter()
+                    .map(|x| TermOrFinish::Term(x.clone()))
+                    .collect();
+                next_terms.push(TermOrFinish::from_terminal_or_finish(&cur.lookup));
+                for term in next_terms {
+                    let lookups: HashSet<TerminalOrFinish>;
                     let is_nullable;
                     match term {
-                        Term::Terminal(s) => {
-                            lookups = [TerminalOrEmpty::Terminal(s.clone())].iter().cloned().collect();
+                        TermOrFinish::Term(Term::Nonterminal(nt)) => {
+                            lookups = first[&nt]
+                                .iter()
+                                .filter_map(TerminalOrFinish::from_terminal_or_empty)
+                                .collect();
+                            is_nullable = first[&nt].contains(&TerminalOrEmpty::Empty);
+                        }
+                        _ => {
+                            let a = TerminalOrFinish::from_term_or_finish(&term)
+                                .expect("failed type conversion");
+                            lookups = [a].iter().cloned().collect();
                             is_nullable = false;
                         }
-                        Term::Nonterminal(nt) => {
-                            lookups = first[nt].iter().filter(|x| {
-                                match x {
-                                    TerminalOrEmpty::Empty => false,
-                                    _ => true,
-                                }
-                            }).cloned().collect();
-                            is_nullable = first[nt].contains(&TerminalOrEmpty::Empty);
-                        }
-                    } 
+                    }
                     for lookup in &lookups {
-                        let lookup = match lookup {
-                            TerminalOrEmpty::Empty => {
-                                continue;
-                            }
-                            TerminalOrEmpty::Terminal(t) => {
-                                TerminalOrFinish::Terminal(t.clone())
-                            }
-                        };
                         for rule in &by_left[nterm] {
                             let next = LR1Item {
                                 rule,
@@ -192,8 +214,10 @@ impl NonDeterministicLR1Automaton<'_> {
                             };
                             let fst = edges.get_mut(cur).expect("no first set");
                             fst.insert(next.clone(), TermOrEmpty::Empty);
-                            NonDeterministicLR1Automaton::from_grammar_rec(&next, edges, by_left, first);
-                        } 
+                            NonDeterministicLR1Automaton::from_grammar_rec(
+                                &next, edges, by_left, first,
+                            );
+                        }
                     }
                     if !is_nullable {
                         break;

@@ -11,7 +11,7 @@ mod tests {
         // Mopt -> EPS
         // N  -> x
         // N  -> ( S )
-        Grammar {
+        let mut grammar = Grammar {
             rules: vec![
                 // S  -> M Topt
                 Rule {
@@ -72,13 +72,15 @@ mod tests {
                     ],
                 },
             ],
-        }
+        };
+        add_fake_axiom(&mut grammar, "S");
+        grammar
     }
 
     fn get_cbs_grammar() -> Grammar {
         // S ->
         // S -> (S)S
-        Grammar {
+        let mut grammar = Grammar {
             rules: vec![
                 Rule {
                     left: Nonterminal(String::from("S")),
@@ -94,7 +96,9 @@ mod tests {
                     ],
                 },
             ],
-        }
+        };
+        add_fake_axiom(&mut grammar, "S");
+        grammar
     }
 
     #[test]
@@ -117,16 +121,28 @@ mod tests {
         let first = calculate_first(&grammar);
         assert_eq!(
             first,
-            [(
-                Nonterminal(String::from("S")),
-                [
-                    TerminalOrEmpty::Empty,
-                    TerminalOrEmpty::Terminal(Terminal(String::from("("))),
-                ]
-                .iter()
-                .cloned()
-                .collect()
-            )]
+            [
+                (
+                    Nonterminal(String::from(GRAMMAR_AXIOM_NAME)),
+                    [
+                        TerminalOrEmpty::Empty,
+                        TerminalOrEmpty::Terminal(Terminal(String::from("("))),
+                    ]
+                    .iter()
+                    .cloned()
+                    .collect()
+                ),
+                (
+                    Nonterminal(String::from("S")),
+                    [
+                        TerminalOrEmpty::Empty,
+                        TerminalOrEmpty::Terminal(Terminal(String::from("("))),
+                    ]
+                    .iter()
+                    .cloned()
+                    .collect()
+                )
+            ]
             .iter()
             .cloned()
             .collect()
@@ -140,6 +156,16 @@ mod tests {
         assert_eq!(
             first,
             [
+                (
+                    Nonterminal(String::from(GRAMMAR_AXIOM_NAME)),
+                    [
+                        TerminalOrEmpty::Terminal(Terminal(String::from("("))),
+                        TerminalOrEmpty::Terminal(Terminal(String::from("x"))),
+                    ]
+                    .iter()
+                    .cloned()
+                    .collect()
+                ),
                 (
                     Nonterminal(String::from("S")),
                     [
