@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::format, hash::Hash};
+mod tests;
+
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+};
 
 struct Token<T> {
     tag: String,
@@ -36,6 +41,12 @@ enum TerminalOrFinish {
     Finish,
 }
 
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+enum TerminalOrEmpty {
+    Terminal(Terminal),
+    Empty,
+}
+
 #[derive(PartialEq, Eq, Hash, Debug)]
 struct Rule {
     left: Nonterminal,
@@ -64,13 +75,13 @@ impl ToString for LR1Item<'_> {
         let mut i = 0;
         for term in &self.rule.right {
             if i == self.position {
-                right_str.push('*');
+                right_str.push('^');
             }
             right_str.push_str(term.to_string().as_str());
             i += 1;
         }
         if i == self.position {
-            right_str.push('*');
+            right_str.push('^');
         }
         String::from(format!("{} -> {}", self.rule.left.0, right_str))
     }
@@ -130,7 +141,13 @@ impl<'a> NonDeterministicLR1Automaton<'_> {
                 true => "red",
                 false => "black",
             };
-            result += format!(r#"{} [label="{}", shape="rectangle", color="{}"]"#, cur, item.to_string(), color).as_str();
+            result += format!(
+                r#"{} [label="{}", shape="rectangle", color="{}"]"#,
+                cur,
+                item.to_string(),
+                color
+            )
+            .as_str();
             result += "\n";
             ids.insert(item, cur);
             cur += 1;
@@ -146,7 +163,7 @@ impl<'a> NonDeterministicLR1Automaton<'_> {
                 result += format!(r#"{id1} -> {id2} [label="{term_str}"]"#).as_str();
                 result += "\n";
             }
-        } 
+        }
         result += "}\n";
         result
     }
@@ -186,36 +203,83 @@ enum ParseTree<'a, T> {
     Leaf(&'a Token<T>),
 }
 
-impl<'a, 'b, T> ParseTree<'_, T> {
-    fn from_tables_and_tokens(tables: &'a ParseTables, tokens: &'b [Token<T>]) -> ParseTree<'b, T> {
+impl<T> ParseTree<'_, T> {
+    fn from_tables_and_tokens<'a, 'b>(
+        tables: &'a ParseTables,
+        tokens: &'b [Token<T>],
+    ) -> ParseTree<'b, T> {
         panic!("not implemented");
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn graphviz() {
-        let grammar = Grammar {
-            rules: vec![
-                Rule {
-                    left: Nonterminal(String::from("S")),
-                    right: vec![],
-                },
-                Rule {
-                    left: Nonterminal(String::from("S")),
-                    right: vec![
-                        Term::Terminal(Terminal(String::from("("))),
-                        Term::Nonterminal(Nonterminal(String::from("S"))),
-                        Term::Terminal(Terminal(String::from(")"))),
-                        Term::Nonterminal(Nonterminal(String::from("S"))),
-                    ],
-                },
-            ],
-        };
-        let automaton = NonDeterministicLR1Automaton::from_grammar(&grammar);
-        println!("{}", automaton.to_graphviz());
+fn calculate_first(grammar: &Grammar) -> HashMap<Nonterminal, HashSet<TerminalOrEmpty>> {
+    let mut first = HashMap::new();
+    let mut nullable: HashSet<Nonterminal> = HashSet::new();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for rule in &grammar.rules {
+            if nullable.contains(&rule.left) {
+                continue;
+            }
+            let mut ok = true;
+            for term in &rule.right {
+                ok = ok && match term {
+                    Term::Nonterminal(s) => nullable.contains(s),
+                    Term::Terminal(_) => false,
+                };
+            }
+            if ok {
+                nullable.insert(rule.left.clone());
+                changed = true;
+            }
+        }
     }
+    for rule in &grammar.rules {
+        if first.get(&rule.left).is_none() {
+            first.insert(rule.left.clone(), HashSet::new());
+        }
+        for term in &rule.right {
+            if let Term::Nonterminal(term) = term {
+                if first.get(term).is_none() {
+                    first.insert(term.clone(), HashSet::new());
+                }
+            }
+        }
+    }
+    for term in &nullable {
+        let first_ref = first.get_mut(term).expect("no first set");
+        first_ref.insert(TerminalOrEmpty::Empty);
+    }
+    changed = true;
+    while changed {
+        changed = false;
+        for rule in &grammar.rules {
+            for term in &rule.right {
+                match term {
+                    Term::Terminal(t) => {
+                        let val = TerminalOrEmpty::Terminal(t.clone());
+                        changed = changed || !first[&rule.left].contains(&val);
+                        let fst = first.get_mut(&rule.left).expect("no first set");
+                        fst.insert(val);
+                        break;
+                    }
+                    Term::Nonterminal(nterm) => {
+                        let mut ns: HashSet<TerminalOrEmpty> =
+                            first[&rule.left].union(&first[nterm]).cloned().collect();
+                        if !nullable.contains(&rule.left) {
+                            ns.remove(&TerminalOrEmpty::Empty);
+                        }
+                        changed = changed || ns.len() != first[&rule.left].len();
+                        let fst = first.get_mut(&rule.left).expect("no first set");
+                        *fst = ns;
+                        if !nullable.contains(nterm) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    first
 }
