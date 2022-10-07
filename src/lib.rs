@@ -1,5 +1,7 @@
 mod tests;
 
+const GRAMMAR_AXIOM_NAME: &str = "ROOT";
+
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
@@ -36,6 +38,7 @@ enum TermOrEmpty {
     Empty,
 }
 
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 enum TerminalOrFinish {
     Terminal(Terminal),
     Finish,
@@ -57,10 +60,11 @@ struct Grammar {
     rules: Vec<Rule>,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct LR1Item<'a> {
     rule: &'a Rule,
     position: u32,
+    lookup: TerminalOrFinish,
 }
 
 impl LR1Item<'_> {
@@ -91,45 +95,112 @@ struct NonDeterministicLR1Automaton<'a> {
     edges: HashMap<LR1Item<'a>, HashMap<LR1Item<'a>, TermOrEmpty>>,
 }
 
-impl<'a> NonDeterministicLR1Automaton<'_> {
-    fn from_grammar(grammar: &'a Grammar) -> NonDeterministicLR1Automaton<'a> {
-        let mut by_left: HashMap<Nonterminal, Vec<&Rule>> = HashMap::new();
-        for rule in &grammar.rules {
-            match by_left.get_mut(&rule.left) {
-                Some(v) => {
-                    v.push(rule);
-                }
-                None => {
-                    by_left.insert(rule.left.clone(), vec![rule]);
-                }
-            }
-        }
+impl NonDeterministicLR1Automaton<'_> {
+    fn from_grammar<'a>(grammar: &'a Grammar) -> NonDeterministicLR1Automaton<'a> {
+        // let mut by_left: HashMap<Nonterminal, Vec<&Rule>> = HashMap::new();
+        // for rule in &grammar.rules {
+        //     match by_left.get_mut(&rule.left) {
+        //         Some(v) => {
+        //             v.push(rule);
+        //         }
+        //         None => {
+        //             by_left.insert(rule.left.clone(), vec![rule]);
+        //         }
+        //     }
+        // }
         let mut edges = HashMap::new();
-        for rule in &grammar.rules {
-            for position in 0..rule.right.len() as u32 + 1 {
-                let item = LR1Item { rule, position };
-                let mut adjacent = HashMap::new();
-                if position < rule.right.len() as u32 {
-                    let next = LR1Item {
-                        rule,
-                        position: position + 1,
-                    };
-                    let term = &rule.right[position as usize];
-                    adjacent.insert(next, TermOrEmpty::Term(term.clone()));
-                    if let Term::Nonterminal(nt) = term {
-                        for next_rule in &by_left[nt] {
-                            let next = LR1Item {
-                                rule: next_rule,
-                                position: 0,
-                            };
-                            adjacent.insert(next, TermOrEmpty::Empty);
+        // for rule in &grammar.rules {
+        //     for position in 0..rule.right.len() as u32 + 1 {
+        //         let item = LR1Item { rule, position };
+        //         let mut adjacent = HashMap::new();
+        //         if position < rule.right.len() as u32 {
+        //             let next = LR1Item {
+        //                 rule,
+        //                 position: position + 1,
+        //             };
+        //             let term = &rule.right[position as usize];
+        //             adjacent.insert(next, TermOrEmpty::Term(term.clone()));
+        //             if let Term::Nonterminal(nt) = term {
+        //                 for next_rule in &by_left[nt] {
+        //                     let next = LR1Item {
+        //                         rule: next_rule,
+        //                         position: 0,
+        //                     };
+        //                     adjacent.insert(next, TermOrEmpty::Empty);
+        //                 }
+        //             }
+        //         }
+        //         edges.insert(item, adjacent);
+        //     }
+        // }
+        NonDeterministicLR1Automaton { edges }
+    }
+
+    fn from_grammar_rec<'a>(
+        cur: &LR1Item<'a>,
+        edges: &mut HashMap<LR1Item<'a>, HashMap<LR1Item<'a>, TermOrEmpty>>,
+        by_left: &'a HashMap<Nonterminal, Vec<&Rule>>,
+        first: &HashMap<Nonterminal, HashSet<TerminalOrEmpty>>,
+    ) {
+        if edges.contains_key(cur) {
+            return;
+        }
+        edges.insert(cur.clone(), HashMap::new());
+        if !cur.is_finish() {
+            let term = &cur.rule.right[cur.position as usize];
+            let next = LR1Item {
+                rule: cur.rule,
+                position: cur.position + 1,
+                lookup: cur.lookup.clone(),
+            };
+            let fst = edges.get_mut(cur).expect("no first set");
+            fst.insert(next.clone(), TermOrEmpty::Term(term.clone()));
+            NonDeterministicLR1Automaton::from_grammar_rec(&next, edges, by_left, first);
+            if let Term::Nonterminal(nterm) = term {
+                for term in &cur.rule.right[(cur.position + 1) as usize..] {
+                    let lookups: HashSet<TerminalOrEmpty>;
+                    let is_nullable;
+                    match term {
+                        Term::Terminal(s) => {
+                            lookups = [TerminalOrEmpty::Terminal(s.clone())].iter().cloned().collect();
+                            is_nullable = false;
                         }
+                        Term::Nonterminal(nt) => {
+                            lookups = first[nt].iter().filter(|x| {
+                                match x {
+                                    TerminalOrEmpty::Empty => false,
+                                    _ => true,
+                                }
+                            }).cloned().collect();
+                            is_nullable = first[nt].contains(&TerminalOrEmpty::Empty);
+                        }
+                    } 
+                    for lookup in &lookups {
+                        let lookup = match lookup {
+                            TerminalOrEmpty::Empty => {
+                                continue;
+                            }
+                            TerminalOrEmpty::Terminal(t) => {
+                                TerminalOrFinish::Terminal(t.clone())
+                            }
+                        };
+                        for rule in &by_left[nterm] {
+                            let next = LR1Item {
+                                rule,
+                                position: 0,
+                                lookup: lookup.clone(),
+                            };
+                            let fst = edges.get_mut(cur).expect("no first set");
+                            fst.insert(next.clone(), TermOrEmpty::Empty);
+                            NonDeterministicLR1Automaton::from_grammar_rec(&next, edges, by_left, first);
+                        } 
+                    }
+                    if !is_nullable {
+                        break;
                     }
                 }
-                edges.insert(item, adjacent);
             }
         }
-        NonDeterministicLR1Automaton { edges }
     }
 
     fn to_graphviz(self: &Self) -> String {
@@ -224,10 +295,11 @@ fn calculate_first(grammar: &Grammar) -> HashMap<Nonterminal, HashSet<TerminalOr
             }
             let mut ok = true;
             for term in &rule.right {
-                ok = ok && match term {
-                    Term::Nonterminal(s) => nullable.contains(s),
-                    Term::Terminal(_) => false,
-                };
+                ok = ok
+                    && match term {
+                        Term::Nonterminal(s) => nullable.contains(s),
+                        Term::Terminal(_) => false,
+                    };
             }
             if ok {
                 nullable.insert(rule.left.clone());
@@ -282,4 +354,11 @@ fn calculate_first(grammar: &Grammar) -> HashMap<Nonterminal, HashSet<TerminalOr
         }
     }
     first
+}
+
+fn add_fake_axiom(grammar: &mut Grammar, current_axiom: &str) {
+    grammar.rules.push(Rule {
+        left: Nonterminal(String::from(GRAMMAR_AXIOM_NAME)),
+        right: vec![Term::Nonterminal(Nonterminal(String::from(current_axiom)))],
+    });
 }
