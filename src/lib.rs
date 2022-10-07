@@ -62,13 +62,24 @@ enum LR1Action {
     Accept,
 }
 
-struct LR1Tables {
+struct ParseTables {
     action: HashMap<(LR1Item, TerminalOrFinish), LR1Action>,
     goto: HashMap<(LR1Item, Nonterminal), LR1Item>,
 }
 
-impl LR1Tables {
-    fn from_automaton(automaton: &DetermenisticLR1Automaton) -> LR1Tables {
+impl ParseTables {
+    fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
+        panic!("not implemented");
+    }
+}
+
+enum ParseTree<T> {
+    Internal(Nonterminal, Vec<ParseTree<T>>),
+    Leaf(Token<T>),
+}
+
+impl <T> ParseTree<T> {
+    fn from_tables_and_tokens(tables: &ParseTables, tokens: &[Token<T>]) -> ParseTree<T> {
         panic!("not implemented");
     }
 }
