@@ -97,6 +97,16 @@ struct Rule {
     right: Vec<Term>,
 }
 
+impl ToString for Rule {
+    fn to_string(&self) -> String {
+        let mut result = format!("{} -> ", self.left.0);
+        for term in &self.right {
+            result += term.to_string().as_ref();
+        }
+        result
+    }
+}
+
 struct Grammar {
     rules: Vec<Rule>,
 }
@@ -387,18 +397,96 @@ impl DetermenisticLR1Automaton {
 
 enum LR1Action {
     Reduce(Rule),
-    Shift(LR1Item),
+    Shift(i32),
     Accept,
 }
 
+impl ToString for LR1Action {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Reduce(rule) => format!("Reduce({})", rule.to_string()),
+            Self::Shift(state) => format!("Shift({})", state),
+            Self::Accept => String::from("Accept"),
+        }
+    }
+}
+
 struct ParseTables {
-    action: HashMap<(LR1Item, TerminalOrFinish), LR1Action>,
-    goto: HashMap<(LR1Item, Nonterminal), LR1Item>,
+    start: i32,
+    action: HashMap<(i32, TerminalOrFinish), LR1Action>,
+    goto: HashMap<(i32, Nonterminal), i32>,
 }
 
 impl ParseTables {
     fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
-        panic!("not implemented");
+        let mut cur = 0;
+        let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
+        for (item, _) in &automaton.edges {
+            ids.insert(item, cur);
+            cur += 1;
+        }
+        let mut res = ParseTables {
+            start: ids[&automaton.start],
+            action: HashMap::new(),
+            goto: HashMap::new(),
+        };
+        let mut visited = HashSet::new();
+        Self::from_automaton_rec(&automaton.start, &ids, &mut visited, automaton, &mut res);
+        res
+    }
+
+    fn from_automaton_rec(
+        cur: &BTreeSet<LR1Item>,
+        ids: &HashMap<&BTreeSet<LR1Item>, i32>,
+        visited: &mut HashSet<i32>,
+        automaton: &DetermenisticLR1Automaton,
+        res: &mut ParseTables,
+    ) {
+        let id = ids[cur];
+        if visited.contains(&id) {
+            return;
+        }
+        visited.insert(id);
+        for (other, term) in &automaton.edges[cur] {
+            let other_id = ids[other];
+            match term {
+                Term::Nonterminal(term) => {
+                    res.goto.insert((id, term.clone()), other_id);
+                }
+                Term::Terminal(term) => {
+                    res.action.insert(
+                        (id, TerminalOrFinish::Terminal(term.clone())),
+                        LR1Action::Shift(other_id),
+                    );
+                }
+            }
+            Self::from_automaton_rec(other, ids, visited, automaton, res);
+        }
+        for item in cur {
+            if item.is_finish() {
+                if item.rule.left.0 == GRAMMAR_AXIOM_NAME {
+                    res.action
+                        .insert((id, TerminalOrFinish::Finish), LR1Action::Accept);
+                } else {
+                    res.action.insert(
+                        (id, item.lookup.clone()),
+                        LR1Action::Reduce(item.rule.clone()),
+                    );
+                }
+            }
+        }
+    }
+
+    fn print(&self) {
+        println!("Start: {}", self.start);
+        println!("\nAction:");
+        for ((state, term), action) in &self.action {
+            println!("({}x{})->{}", state, term.to_string(), action.to_string());
+        }
+        println!("\nGoto:");
+        for ((state, term), new_state) in &self.goto {
+            println!("({}x{})->{}", state, term.0, new_state);
+        }
     }
 }
 

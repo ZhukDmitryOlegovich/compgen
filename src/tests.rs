@@ -228,4 +228,22 @@ mod tests {
             .collect()
         );
     }
+
+    #[test]
+    fn test_tables_cbs() {
+        let grammar = get_cbs_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        let tables = ParseTables::from_automaton(&dfa);
+        tables.print();
+    }
+
+    #[test]
+    fn test_tables_arithmetic() {
+        let grammar = get_arithmetic_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        let tables = ParseTables::from_automaton(&dfa);
+        tables.print();
+    }
 }
