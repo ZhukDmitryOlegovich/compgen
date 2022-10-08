@@ -4,11 +4,13 @@ const GRAMMAR_AXIOM_NAME: &str = "ROOT";
 
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
+    fmt::format,
     hash::Hash,
 };
 
+#[derive(Clone)]
 struct Token<T> {
-    tag: String,
+    tag: TerminalOrFinish,
     attribute: T,
 }
 
@@ -495,9 +497,69 @@ enum ParseTree<T> {
     Leaf(Token<T>),
 }
 
-impl<T> ParseTree<T> {
-    fn from_tables_and_tokens(tables: &ParseTables, tokens: &[Token<T>]) -> ParseTree<T> {
-        panic!("not implemented");
+impl<T: Clone> ParseTree<T> {
+    fn from_tables_and_tokens(tables: &ParseTables, tokens: &[Token<T>]) -> Option<ParseTree<T>> {
+        let mut states = vec![tables.start];
+        let mut trees: Vec<ParseTree<T>> = Vec::new();
+        let mut token_index = 0;
+        while token_index < tokens.len() {
+            let token = &tokens[token_index];
+            let cur_state = states.last()?;
+            let action = tables.action.get(&(cur_state.clone(), token.tag.clone()))?;
+            match action {
+                LR1Action::Shift(state) => {
+                    states.push(state.clone());
+                    trees.push(Self::Leaf(token.clone()));
+                    token_index += 1;
+                }
+                LR1Action::Reduce(rule) => {
+                    let mut children: Vec<ParseTree<T>> = Vec::new();
+                    for _ in 0..rule.right.len() {
+                        states.pop();
+                        children.push(trees.pop()?);
+                    }
+                    children.reverse();
+                    trees.push(ParseTree::Internal(rule.left.clone(), children));
+                    let cur = states.last()?;
+                    let next = tables.goto.get(&(cur.clone(), rule.left.clone()))?;
+                    states.push(next.clone());
+                }
+                LR1Action::Accept => {
+                    return trees.pop();
+                }
+            }
+        }
+        None
+    }
+
+    fn to_graphviz(&self) -> String {
+        let mut counter = 0;
+        let inner = self.to_graphviz_rec(&mut counter);
+        let mut res = String::new();
+        res += "digraph G {\n";
+        res += inner.as_ref();
+        res += "}\n";
+        res
+    }
+
+    fn to_graphviz_rec(&self, counter: &mut i32) -> String {
+        *counter += 1;
+        let id = *counter;
+        let mut result = String::new();
+        match self {
+            ParseTree::Internal(nterm, children) => {
+                result += format!("{} [label=\"{}\"]\n", id, nterm.0).as_ref();
+                for child in children {
+                    let child_id = *counter + 1;
+                    result += format!("{id} -> {child_id}\n").as_ref();
+                    result += child.to_graphviz_rec(counter).as_ref();
+                }
+            }
+            ParseTree::Leaf(token) => {
+                result += format!("{} [label=\"{}\"]\n", id, token.tag.to_string()).as_ref();
+            }
+        }
+        result
     }
 }
 
