@@ -3,7 +3,7 @@ mod tests;
 const GRAMMAR_AXIOM_NAME: &str = "ROOT";
 
 use std::{
-    collections::{HashMap, HashSet, BTreeSet},
+    collections::{BTreeSet, HashMap, HashSet},
     hash::Hash,
 };
 
@@ -355,7 +355,13 @@ impl DetermenisticLR1Automaton {
                 Some(_) => "red",
                 None => "black",
             };
-            result += format!("{} [shape=\"rectangle\",label=\"{}\", color=\"{}\"]\n", cur, Self::node_to_graphviz(items), color).as_ref();
+            result += format!(
+                "{} [shape=\"rectangle\",label=\"{}\", color=\"{}\"]\n",
+                cur,
+                Self::node_to_graphviz(items),
+                color
+            )
+            .as_ref();
             ids.insert(items, cur);
             cur += 1;
         }
@@ -373,7 +379,9 @@ impl DetermenisticLR1Automaton {
     }
 
     fn node_to_graphviz(items: &BTreeSet<LR1Item>) -> String {
-        items.iter().fold(String::new(), |x, y| x + y.to_string().as_ref() + "\\n")
+        items
+            .iter()
+            .fold(String::new(), |x, y| x + y.to_string().as_ref() + "\\n")
     }
 }
 
