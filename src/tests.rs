@@ -128,8 +128,7 @@ mod tests {
                         TerminalOrEmpty::Empty,
                         TerminalOrEmpty::Terminal(Terminal(String::from("("))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
                 (
@@ -138,13 +137,11 @@ mod tests {
                         TerminalOrEmpty::Empty,
                         TerminalOrEmpty::Terminal(Terminal(String::from("("))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 )
             ]
-            .iter()
-            .cloned()
+            .into_iter()
             .collect()
         )
     }
@@ -162,8 +159,7 @@ mod tests {
                         TerminalOrEmpty::Terminal(Terminal(String::from("("))),
                         TerminalOrEmpty::Terminal(Terminal(String::from("x"))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
                 (
@@ -172,8 +168,7 @@ mod tests {
                         TerminalOrEmpty::Terminal(Terminal(String::from("("))),
                         TerminalOrEmpty::Terminal(Terminal(String::from("x"))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
                 (
@@ -182,8 +177,7 @@ mod tests {
                         TerminalOrEmpty::Empty,
                         TerminalOrEmpty::Terminal(Terminal(String::from("+"))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
                 (
@@ -192,8 +186,7 @@ mod tests {
                         TerminalOrEmpty::Terminal(Terminal(String::from("("))),
                         TerminalOrEmpty::Terminal(Terminal(String::from("x"))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
                 (
@@ -202,8 +195,7 @@ mod tests {
                         TerminalOrEmpty::Empty,
                         TerminalOrEmpty::Terminal(Terminal(String::from("*"))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
                 (
@@ -212,13 +204,11 @@ mod tests {
                         TerminalOrEmpty::Terminal(Terminal(String::from("("))),
                         TerminalOrEmpty::Terminal(Terminal(String::from("x"))),
                     ]
-                    .iter()
-                    .cloned()
+                    .into_iter()
                     .collect()
                 ),
             ]
-            .iter()
-            .cloned()
+            .into_iter()
             .collect()
         );
     }

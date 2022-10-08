@@ -91,7 +91,7 @@ enum TerminalOrEmpty {
     Empty,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct Rule {
     left: Nonterminal,
     right: Vec<Term>,
@@ -102,19 +102,19 @@ struct Grammar {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
-struct LR1Item<'a> {
-    rule: &'a Rule,
+struct LR1Item {
+    rule: Rule,
     position: u32,
     lookup: TerminalOrFinish,
 }
 
-impl LR1Item<'_> {
+impl LR1Item {
     fn is_finish(&self) -> bool {
         self.position == self.rule.right.len() as u32
     }
 }
 
-impl ToString for LR1Item<'_> {
+impl ToString for LR1Item {
     fn to_string(&self) -> String {
         let mut right_str = String::new();
         let mut i = 0;
@@ -137,38 +137,42 @@ impl ToString for LR1Item<'_> {
     }
 }
 
-struct NonDeterministicLR1Automaton<'a> {
-    edges: HashMap<LR1Item<'a>, HashMap<LR1Item<'a>, TermOrEmpty>>,
+struct NonDeterministicLR1Automaton {
+    edges: HashMap<LR1Item, HashMap<LR1Item, TermOrEmpty>>,
+    start: LR1Item,
 }
 
-impl NonDeterministicLR1Automaton<'_> {
-    fn from_grammar<'a>(grammar: &'a Grammar) -> NonDeterministicLR1Automaton<'a> {
-        let mut by_left: HashMap<Nonterminal, Vec<&Rule>> = HashMap::new();
+impl NonDeterministicLR1Automaton {
+    fn from_grammar(grammar: &Grammar) -> NonDeterministicLR1Automaton {
+        let mut by_left: HashMap<Nonterminal, Vec<Rule>> = HashMap::new();
         for rule in &grammar.rules {
             match by_left.get_mut(&rule.left) {
                 Some(v) => {
-                    v.push(rule);
+                    v.push(rule.clone());
                 }
                 None => {
-                    by_left.insert(rule.left.clone(), vec![rule]);
+                    by_left.insert(rule.left.clone(), vec![rule.clone()]);
                 }
             }
         }
         let mut edges = HashMap::new();
         let first = calculate_first(grammar);
         let start = &LR1Item {
-            rule: by_left[&Nonterminal(String::from(GRAMMAR_AXIOM_NAME))][0],
+            rule: by_left[&Nonterminal(String::from(GRAMMAR_AXIOM_NAME))][0].clone(),
             position: 0,
             lookup: TerminalOrFinish::Finish,
         };
-        NonDeterministicLR1Automaton::from_grammar_rec(start, &mut edges, &by_left, &first);
-        NonDeterministicLR1Automaton { edges }
+        Self::from_grammar_rec(start, &mut edges, &by_left, &first);
+        NonDeterministicLR1Automaton {
+            edges,
+            start: start.clone(),
+        }
     }
 
-    fn from_grammar_rec<'a>(
-        cur: &LR1Item<'a>,
-        edges: &mut HashMap<LR1Item<'a>, HashMap<LR1Item<'a>, TermOrEmpty>>,
-        by_left: &HashMap<Nonterminal, Vec<&'a Rule>>,
+    fn from_grammar_rec(
+        cur: &LR1Item,
+        edges: &mut HashMap<LR1Item, HashMap<LR1Item, TermOrEmpty>>,
+        by_left: &HashMap<Nonterminal, Vec<Rule>>,
         first: &HashMap<Nonterminal, HashSet<TerminalOrEmpty>>,
     ) {
         if edges.contains_key(cur) {
@@ -178,13 +182,13 @@ impl NonDeterministicLR1Automaton<'_> {
         if !cur.is_finish() {
             let term = &cur.rule.right[cur.position as usize];
             let next = LR1Item {
-                rule: cur.rule,
+                rule: cur.rule.clone(),
                 position: cur.position + 1,
                 lookup: cur.lookup.clone(),
             };
             let fst = edges.get_mut(cur).expect("no first set");
             fst.insert(next.clone(), TermOrEmpty::Term(term.clone()));
-            NonDeterministicLR1Automaton::from_grammar_rec(&next, edges, by_left, first);
+            Self::from_grammar_rec(&next, edges, by_left, first);
             if let Term::Nonterminal(nterm) = term {
                 let mut next_terms: Vec<TermOrFinish> = cur.rule.right
                     [(cur.position + 1) as usize..]
@@ -206,22 +210,20 @@ impl NonDeterministicLR1Automaton<'_> {
                         _ => {
                             let a = TerminalOrFinish::from_term_or_finish(&term)
                                 .expect("failed type conversion");
-                            lookups = [a].iter().cloned().collect();
+                            lookups = [a].into_iter().collect();
                             is_nullable = false;
                         }
                     }
                     for lookup in &lookups {
                         for rule in &by_left[nterm] {
                             let next = LR1Item {
-                                rule,
+                                rule: rule.clone(),
                                 position: 0,
                                 lookup: lookup.clone(),
                             };
                             let fst = edges.get_mut(cur).expect("no first set");
                             fst.insert(next.clone(), TermOrEmpty::Empty);
-                            NonDeterministicLR1Automaton::from_grammar_rec(
-                                &next, edges, by_left, first,
-                            );
+                            Self::from_grammar_rec(&next, edges, by_left, first);
                         }
                     }
                     if !is_nullable {
@@ -269,47 +271,96 @@ impl NonDeterministicLR1Automaton<'_> {
     }
 }
 
-type DetermenisticLR1State<'a> = HashSet<LR1Item<'a>>;
+impl NonDeterministicLR1Automaton {
+    fn get_transitions(&self, vertices: &HashSet<LR1Item>) -> HashMap<Term, HashSet<LR1Item>> {
+        let mut res: HashMap<Term, HashSet<LR1Item>> = HashMap::new();
+        for vertex in vertices {
+            for (other, term) in &self.edges[vertex] {
+                if let TermOrEmpty::Term(t) = term {
+                    if !res.contains_key(t) {
+                        res.insert(t.clone(), HashSet::new());
+                    }
+                    let fst = res.get_mut(t).expect("no set for vertex");
+                    fst.insert(other.clone());
+                }
+            }
+        }
+        res.into_iter()
+            .map(|(t, s)| (t, self.get_epsilon_closure(&s)))
+            .collect()
+    }
 
-struct DetermenisticLR1Automaton<'a> {
-    edges: HashMap<DetermenisticLR1State<'a>, HashMap<DetermenisticLR1State<'a>, Term>>,
-}
+    fn get_epsilon_closure(&self, vertices: &HashSet<LR1Item>) -> HashSet<LR1Item> {
+        let mut res = HashSet::new();
+        for vertex in vertices {
+            if !res.contains(vertex) {
+                self.get_epsilon_closure_rec(vertex, &mut res);
+            }
+        }
+        res
+    }
 
-impl<'a> DetermenisticLR1Automaton<'_> {
-    fn from_non_deterministic(
-        automaton: &'a NonDeterministicLR1Automaton,
-    ) -> DetermenisticLR1Automaton<'a> {
-        panic!("not implemented");
+    fn get_epsilon_closure_rec(&self, vertex: &LR1Item, res: &mut HashSet<LR1Item>) {
+        res.insert(vertex.clone());
+        for (other, term) in &self.edges[vertex] {
+            if let TermOrEmpty::Empty = term {
+                if !res.contains(other) {
+                    self.get_epsilon_closure_rec(other, res);
+                }
+            }
+        }
     }
 }
 
-enum LR1Action<'a> {
-    Reduce(&'a Rule),
-    Shift(LR1Item<'a>),
+struct DetermenisticLR1Automaton {
+    edges: HashMap<HashSet<LR1Item>, HashMap<HashSet<LR1Item>, Term>>,
+    start: HashSet<LR1Item>,
+}
+
+impl DetermenisticLR1Automaton {
+    fn from_non_deterministic(
+        automaton: &NonDeterministicLR1Automaton,
+    ) -> DetermenisticLR1Automaton {
+        let mut edges = HashMap::new();
+        let mut start = [automaton.start.clone()].into_iter().collect();
+        start = automaton.get_epsilon_closure(&start);
+        Self::from_non_deterministic_rec(&start, automaton, &mut edges);
+        DetermenisticLR1Automaton { edges, start }
+    }
+
+    fn from_non_deterministic_rec(
+        cur: &HashSet<LR1Item>,
+        automaton: &NonDeterministicLR1Automaton,
+        edges: &mut HashMap<HashSet<LR1Item>, HashMap<HashSet<LR1Item>, Term>>,
+    ) {
+        panic!("not implemented")
+    }
+}
+
+enum LR1Action {
+    Reduce(Rule),
+    Shift(LR1Item),
     Accept,
 }
 
-struct ParseTables<'a> {
-    action: HashMap<(LR1Item<'a>, TerminalOrFinish), LR1Action<'a>>,
-    goto: HashMap<(LR1Item<'a>, Nonterminal), LR1Item<'a>>,
+struct ParseTables {
+    action: HashMap<(LR1Item, TerminalOrFinish), LR1Action>,
+    goto: HashMap<(LR1Item, Nonterminal), LR1Item>,
 }
 
-impl<'a> ParseTables<'_> {
-    fn from_automaton(automaton: &'a DetermenisticLR1Automaton) -> ParseTables<'a> {
+impl ParseTables {
+    fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
         panic!("not implemented");
     }
 }
 
-enum ParseTree<'a, T> {
-    Internal(Nonterminal, Vec<ParseTree<'a, T>>),
-    Leaf(&'a Token<T>),
+enum ParseTree<T> {
+    Internal(Nonterminal, Vec<ParseTree<T>>),
+    Leaf(Token<T>),
 }
 
-impl<T> ParseTree<'_, T> {
-    fn from_tables_and_tokens<'a, 'b>(
-        tables: &'a ParseTables,
-        tokens: &'b [Token<T>],
-    ) -> ParseTree<'b, T> {
+impl<T> ParseTree<T> {
+    fn from_tables_and_tokens(tables: &ParseTables, tokens: &[Token<T>]) -> ParseTree<T> {
         panic!("not implemented");
     }
 }
