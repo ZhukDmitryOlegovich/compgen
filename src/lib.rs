@@ -128,7 +128,12 @@ impl ToString for LR1Item<'_> {
         if i == self.position {
             right_str.push('^');
         }
-        String::from(format!("{} -> {}, {}", self.rule.left.0, right_str, self.lookup.to_string()))
+        String::from(format!(
+            "{} -> {}, {}",
+            self.rule.left.0,
+            right_str,
+            self.lookup.to_string()
+        ))
     }
 }
 
@@ -264,8 +269,10 @@ impl NonDeterministicLR1Automaton<'_> {
     }
 }
 
+type DetermenisticLR1State<'a> = HashSet<LR1Item<'a>>;
+
 struct DetermenisticLR1Automaton<'a> {
-    edges: HashMap<LR1Item<'a>, HashMap<LR1Item<'a>, Term>>,
+    edges: HashMap<DetermenisticLR1State<'a>, HashMap<DetermenisticLR1State<'a>, Term>>,
 }
 
 impl<'a> DetermenisticLR1Automaton<'_> {
