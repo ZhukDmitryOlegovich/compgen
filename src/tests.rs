@@ -102,17 +102,33 @@ mod tests {
     }
 
     #[test]
-    fn test_automaton_cbs_graphviz() {
+    fn test_non_deterministic_automaton_cbs_graphviz() {
         let grammar = get_cbs_grammar();
         let automaton = NonDeterministicLR1Automaton::from_grammar(&grammar);
         println!("{}", automaton.to_graphviz());
     }
 
     #[test]
-    fn test_automaton_arithmetic_graphviz() {
+    fn test_non_deterministic_automaton_arithmetic_graphviz() {
         let grammar = get_arithmetic_grammar();
         let automaton = NonDeterministicLR1Automaton::from_grammar(&grammar);
         println!("{}", automaton.to_graphviz());
+    }
+
+    #[test]
+    fn test_deterministic_automaton_cbs_graphviz() {
+        let grammar = get_cbs_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        println!("{}", dfa.to_graphviz());
+    }
+
+    #[test]
+    fn test_deterministic_automaton_arithmetic_graphviz() {
+        let grammar = get_arithmetic_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        println!("{}", dfa.to_graphviz());
     }
 
     #[test]

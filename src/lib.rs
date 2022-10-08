@@ -3,7 +3,7 @@ mod tests;
 const GRAMMAR_AXIOM_NAME: &str = "ROOT";
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, BTreeSet},
     hash::Hash,
 };
 
@@ -12,12 +12,12 @@ struct Token<T> {
     attribute: T,
 }
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 struct Nonterminal(String);
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 struct Terminal(String);
 
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 enum Term {
     Nonterminal(Nonterminal),
     Terminal(Terminal),
@@ -53,7 +53,7 @@ impl TermOrFinish {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, PartialOrd, Ord)]
 enum TerminalOrFinish {
     Terminal(Terminal),
     Finish,
@@ -91,7 +91,7 @@ enum TerminalOrEmpty {
     Empty,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, PartialOrd, Ord)]
 struct Rule {
     left: Nonterminal,
     right: Vec<Term>,
@@ -101,7 +101,7 @@ struct Grammar {
     rules: Vec<Rule>,
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, PartialOrd, Ord)]
 struct LR1Item {
     rule: Rule,
     position: u32,
@@ -254,6 +254,8 @@ impl NonDeterministicLR1Automaton {
             ids.insert(item, cur);
             cur += 1;
         }
+        result += "fake [style=\"invis\"]\n";
+        result += format!("fake -> {}\n", ids[&self.start]).as_ref();
         for (item, adjacent) in &self.edges {
             for (other_item, term) in adjacent {
                 let id1 = ids[item];
@@ -272,13 +274,13 @@ impl NonDeterministicLR1Automaton {
 }
 
 impl NonDeterministicLR1Automaton {
-    fn get_transitions(&self, vertices: &HashSet<LR1Item>) -> HashMap<Term, HashSet<LR1Item>> {
-        let mut res: HashMap<Term, HashSet<LR1Item>> = HashMap::new();
+    fn get_transitions(&self, vertices: &BTreeSet<LR1Item>) -> HashMap<Term, BTreeSet<LR1Item>> {
+        let mut res: HashMap<Term, BTreeSet<LR1Item>> = HashMap::new();
         for vertex in vertices {
             for (other, term) in &self.edges[vertex] {
                 if let TermOrEmpty::Term(t) = term {
                     if !res.contains_key(t) {
-                        res.insert(t.clone(), HashSet::new());
+                        res.insert(t.clone(), BTreeSet::new());
                     }
                     let fst = res.get_mut(t).expect("no set for vertex");
                     fst.insert(other.clone());
@@ -290,8 +292,8 @@ impl NonDeterministicLR1Automaton {
             .collect()
     }
 
-    fn get_epsilon_closure(&self, vertices: &HashSet<LR1Item>) -> HashSet<LR1Item> {
-        let mut res = HashSet::new();
+    fn get_epsilon_closure(&self, vertices: &BTreeSet<LR1Item>) -> BTreeSet<LR1Item> {
+        let mut res = BTreeSet::new();
         for vertex in vertices {
             if !res.contains(vertex) {
                 self.get_epsilon_closure_rec(vertex, &mut res);
@@ -300,7 +302,7 @@ impl NonDeterministicLR1Automaton {
         res
     }
 
-    fn get_epsilon_closure_rec(&self, vertex: &LR1Item, res: &mut HashSet<LR1Item>) {
+    fn get_epsilon_closure_rec(&self, vertex: &LR1Item, res: &mut BTreeSet<LR1Item>) {
         res.insert(vertex.clone());
         for (other, term) in &self.edges[vertex] {
             if let TermOrEmpty::Empty = term {
@@ -313,8 +315,8 @@ impl NonDeterministicLR1Automaton {
 }
 
 struct DetermenisticLR1Automaton {
-    edges: HashMap<HashSet<LR1Item>, HashMap<HashSet<LR1Item>, Term>>,
-    start: HashSet<LR1Item>,
+    edges: HashMap<BTreeSet<LR1Item>, HashMap<BTreeSet<LR1Item>, Term>>,
+    start: BTreeSet<LR1Item>,
 }
 
 impl DetermenisticLR1Automaton {
@@ -322,18 +324,56 @@ impl DetermenisticLR1Automaton {
         automaton: &NonDeterministicLR1Automaton,
     ) -> DetermenisticLR1Automaton {
         let mut edges = HashMap::new();
-        let mut start = [automaton.start.clone()].into_iter().collect();
+        let mut start: BTreeSet<LR1Item> = [automaton.start.clone()].into_iter().collect();
         start = automaton.get_epsilon_closure(&start);
         Self::from_non_deterministic_rec(&start, automaton, &mut edges);
         DetermenisticLR1Automaton { edges, start }
     }
 
     fn from_non_deterministic_rec(
-        cur: &HashSet<LR1Item>,
+        cur: &BTreeSet<LR1Item>,
         automaton: &NonDeterministicLR1Automaton,
-        edges: &mut HashMap<HashSet<LR1Item>, HashMap<HashSet<LR1Item>, Term>>,
+        edges: &mut HashMap<BTreeSet<LR1Item>, HashMap<BTreeSet<LR1Item>, Term>>,
     ) {
-        panic!("not implemented")
+        edges.insert(cur.clone(), HashMap::new());
+        for (term, other) in &automaton.get_transitions(cur) {
+            let edges_ref = edges.get_mut(cur).expect("state is absent from map");
+            edges_ref.insert(other.clone(), term.clone());
+            if !edges.contains_key(other) {
+                Self::from_non_deterministic_rec(other, automaton, edges);
+            }
+        }
+    }
+
+    fn to_graphviz(&self) -> String {
+        let mut result = String::from("digraph G {\nrankdir=\"LR\"\n");
+        let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
+        let mut cur = 0;
+        for (items, _) in &self.edges {
+            let end = items.iter().find(|x| x.is_finish());
+            let color = match end {
+                Some(_) => "red",
+                None => "black",
+            };
+            result += format!("{} [shape=\"rectangle\",label=\"{}\", color=\"{}\"]\n", cur, Self::node_to_graphviz(items), color).as_ref();
+            ids.insert(items, cur);
+            cur += 1;
+        }
+        result += "fake [style=\"invis\"]\n";
+        result += format!("fake -> {}\n", ids[&self.start]).as_ref();
+        for (items, adjacent) in &self.edges {
+            for (other_items, term) in adjacent {
+                let id1 = ids[items];
+                let id2 = ids[other_items];
+                result += format!("{} -> {} [label=\"{}\"]\n", id1, id2, term.to_string()).as_ref();
+            }
+        }
+        result += "}\n";
+        result
+    }
+
+    fn node_to_graphviz(items: &BTreeSet<LR1Item>) -> String {
+        items.iter().fold(String::new(), |x, y| x + y.to_string().as_ref() + "\\n")
     }
 }
 
