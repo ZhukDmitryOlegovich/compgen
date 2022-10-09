@@ -110,6 +110,7 @@ impl ToString for Rule {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 struct Grammar {
     axiom: Nonterminal,
     rules: Vec<Rule>,
@@ -534,7 +535,9 @@ impl<T: Clone> ParseTree<T> {
         }
         None
     }
+}
 
+impl<T> ParseTree<T> {
     fn to_graphviz(&self) -> String {
         let mut counter = 0;
         let inner = self.to_graphviz_rec(&mut counter);
@@ -926,4 +929,108 @@ fn get_meta_grammar() -> Grammar {
     };
     add_fake_axiom(&mut grammar);
     grammar
+}
+
+fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Option<Grammar> {
+    if let ParseTree::Internal(nterm, root_children) = root {
+        if nterm.0 != "S" {
+            return None;
+        }
+        if let ParseTree::Internal(nterm, children) = root_children.get(0)? {
+            if nterm.0 != "A" {
+                return None;
+            }
+            if let ParseTree::Leaf(t) = children.get(3)? {
+                if let TokenDomainAttribute::Nonterminal(axiom_name) =
+                    t.attribute.domain_attribute.clone()
+                {
+                    let axiom = Nonterminal(axiom_name);
+                    let rules = get_rules_from_tree(root_children.get(1)?)?;
+                    let mut grammar = Grammar { axiom, rules };
+                    add_fake_axiom(&mut grammar);
+                    return Some(grammar);
+                }
+            }
+        }
+    }
+    return None;
+}
+
+fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Option<Vec<Rule>> {
+    if let ParseTree::Internal(nterm, children) = root {
+        if nterm.0 != "R" {
+            return None;
+        }
+        if children.len() == 0 {
+            return Some(Vec::new());
+        }
+        let right = get_rules_from_tree(children.get(1)?)?;
+        if let ParseTree::Internal(nterm, children) = children.get(0)? {
+            if nterm.0 != "T" {
+                return None;
+            }
+            if let ParseTree::Leaf(t) = children.get(1)? {
+                if let TokenDomainAttribute::Nonterminal(name) =
+                    t.attribute.domain_attribute.clone()
+                {
+                    let nterm = Nonterminal(name);
+                    let mut rules = get_subrules_from_tree(&nterm, children.get(2)?)?;
+                    rules.extend(right);
+                    return Some(rules);
+                }
+            }
+        }
+    }
+    return None;
+}
+
+fn get_subrules_from_tree(
+    nterm: &Nonterminal,
+    root: &ParseTree<TokenAttribute>,
+) -> Option<Vec<Rule>> {
+    if let ParseTree::Internal(cur_nterm, children) = root {
+        if cur_nterm.0 != "P" {
+            return None;
+        }
+        if children.len() == 0 {
+            return Some(Vec::new());
+        }
+        let right = get_subrules_from_tree(nterm, children.get(3)?)?;
+        let terms = get_terms_from_subtree(children.get(1)?)?;
+        let mut res = vec![Rule {
+            left: nterm.clone(),
+            right: terms,
+        }];
+        res.extend(right);
+        return Some(res);
+    }
+    None
+}
+
+fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Option<Vec<Term>> {
+    if let ParseTree::Internal(nterm, children) = root {
+        if nterm.0 != "I" {
+            return None;
+        }
+        if children.len() == 0 {
+            return Some(Vec::new());
+        }
+        let right = get_terms_from_subtree(children.get(1)?)?;
+        if let ParseTree::Leaf(t) = children.get(0)? {
+            match t.attribute.domain_attribute.clone() {
+                TokenDomainAttribute::Nonterminal(nterm) => {
+                    let mut res = vec![Term::Nonterminal(Nonterminal(nterm))];
+                    res.extend(right);
+                    return Some(res);
+                }
+                TokenDomainAttribute::Terminal(term) => {
+                    let mut res = vec![Term::Terminal(Terminal(term))];
+                    res.extend(right);
+                    return Some(res);
+                }
+                _ => (),
+            }
+        }
+    }
+    None
 }

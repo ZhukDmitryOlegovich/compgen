@@ -333,6 +333,9 @@ mod tests {
         let tokens = lexer.get_tokens().unwrap();
         let tree = ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
         println!("{}", tree.to_graphviz());
+
+        let parsed = get_grammar_from_tree(&tree);
+        assert_eq!(parsed, Some(grammar));
     }
 
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
