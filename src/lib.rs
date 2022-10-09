@@ -111,6 +111,7 @@ impl ToString for Rule {
 }
 
 struct Grammar {
+    axiom: Nonterminal,
     rules: Vec<Rule>,
 }
 
@@ -638,10 +639,10 @@ fn calculate_first(grammar: &Grammar) -> HashMap<Nonterminal, HashSet<TerminalOr
     first
 }
 
-fn add_fake_axiom(grammar: &mut Grammar, current_axiom: &str) {
+fn add_fake_axiom(grammar: &mut Grammar) {
     grammar.rules.push(Rule {
         left: Nonterminal(String::from(GRAMMAR_AXIOM_NAME)),
-        right: vec![Term::Nonterminal(Nonterminal(String::from(current_axiom)))],
+        right: vec![Term::Nonterminal(grammar.axiom.clone())],
     });
 }
 
@@ -840,6 +841,7 @@ fn get_meta_grammar() -> Grammar {
         // <I  <term I>
         //     <nterm I>
         //     <>>
+        axiom: Nonterminal(String::from("S")),
         rules: vec![
             // <S <A R>>
             Rule {
@@ -922,6 +924,6 @@ fn get_meta_grammar() -> Grammar {
             },
         ],
     };
-    add_fake_axiom(&mut grammar, "S");
+    add_fake_axiom(&mut grammar);
     grammar
 }

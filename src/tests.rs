@@ -14,6 +14,7 @@ mod tests {
         // N  -> x
         // N  -> ( S )
         let mut grammar = Grammar {
+            axiom: Nonterminal(String::from("S")),
             rules: vec![
                 // S  -> M Topt
                 Rule {
@@ -75,7 +76,7 @@ mod tests {
                 },
             ],
         };
-        add_fake_axiom(&mut grammar, "S");
+        add_fake_axiom(&mut grammar);
         grammar
     }
 
@@ -83,6 +84,7 @@ mod tests {
         // S ->
         // S -> (S)S
         let mut grammar = Grammar {
+            axiom: Nonterminal(String::from("S")),
             rules: vec![
                 Rule {
                     left: Nonterminal(String::from("S")),
@@ -99,7 +101,7 @@ mod tests {
                 },
             ],
         };
-        add_fake_axiom(&mut grammar, "S");
+        add_fake_axiom(&mut grammar);
         grammar
     }
 
