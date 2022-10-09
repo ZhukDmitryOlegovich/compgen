@@ -6,9 +6,10 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fmt::format,
     hash::Hash,
+    ops::Index,
 };
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 struct Token<T> {
     tag: TerminalOrFinish,
     attribute: T,
@@ -641,4 +642,186 @@ fn add_fake_axiom(grammar: &mut Grammar, current_axiom: &str) {
         left: Nonterminal(String::from(GRAMMAR_AXIOM_NAME)),
         right: vec![Term::Nonterminal(Nonterminal(String::from(current_axiom)))],
     });
+}
+
+struct Lexer<'a> {
+    cur: Coord,
+    input: &'a str,
+}
+
+impl<'a> Lexer<'a> {
+    fn new(input: &'a str) -> Self {
+        Lexer {
+            cur: Coord {
+                line: 1,
+                column: 1,
+                index: 0,
+            },
+            input,
+        }
+    }
+
+    fn get_tokens(&mut self) -> Option<Vec<Token<TokenAttribute>>> {
+        let mut res = Vec::new();
+        loop {
+            let token = self.get_next_token()?;
+            let is_finish = token.tag == TerminalOrFinish::Finish;
+            res.push(token);
+            if is_finish {
+                break;
+            }
+        }
+        Some(res)
+    }
+
+    fn get_next_token(&mut self) -> Option<Token<TokenAttribute>> {
+        self.skip_spaces();
+        let begin = self.cur.clone();
+        match self.peek() {
+            Some(ch) => {
+                if ch.is_uppercase() {
+                    let res = self.read_while(|c| !c.is_whitespace() && c != '<' && c != '>');
+                    Some(Token {
+                        tag: TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
+                        attribute: TokenAttribute {
+                            fragment: Fragment {
+                                begin,
+                                end: self.cur.clone(),
+                            },
+                            domain_attribute: TokenDomainAttribute::Nonterminal(res),
+                        },
+                    })
+                } else if ch == '<' {
+                    self.next();
+                    Some(Token {
+                        tag: TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+                        attribute: TokenAttribute {
+                            fragment: Fragment {
+                                begin,
+                                end: self.cur.clone(),
+                            },
+                            domain_attribute: TokenDomainAttribute::None,
+                        },
+                    })
+                } else if ch == '>' {
+                    self.next();
+                    Some(Token {
+                        tag: TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+                        attribute: TokenAttribute {
+                            fragment: Fragment {
+                                begin,
+                                end: self.cur.clone(),
+                            },
+                            domain_attribute: TokenDomainAttribute::None,
+                        },
+                    })
+                } else if ch == '\'' {
+                    self.read_while(|c| c != '\n');
+                    self.next();
+                    self.get_next_token()
+                } else {
+                    let res = self.read_while(|c| !c.is_whitespace() && c != '<' && c != '>');
+                    let tag_name = if res == "axiom" { "axiom" } else { "term" };
+                    Some(Token {
+                        tag: TerminalOrFinish::Terminal(Terminal(String::from(tag_name))),
+                        attribute: TokenAttribute {
+                            fragment: Fragment {
+                                begin,
+                                end: self.cur.clone(),
+                            },
+                            domain_attribute: TokenDomainAttribute::Terminal(res),
+                        },
+                    })
+                }
+            }
+            None => Some(Token {
+                tag: TerminalOrFinish::Finish,
+                attribute: TokenAttribute {
+                    fragment: Fragment {
+                        begin: self.cur.clone(),
+                        end: self.cur.clone(),
+                    },
+                    domain_attribute: TokenDomainAttribute::None,
+                },
+            }),
+        }
+    }
+
+    fn read_while<F>(&mut self, p: F) -> String
+    where
+        F: Fn(char) -> bool,
+    {
+        let mut res = String::new();
+        loop {
+            match self.peek() {
+                Some(c) => {
+                    if !p(c) {
+                        break;
+                    }
+                    res += c.to_string().as_ref();
+                }
+                None => break,
+            }
+            self.next();
+        }
+        res
+    }
+
+    fn skip_spaces(&mut self) {
+        while self.is_space() {
+            self.next()
+        }
+    }
+
+    fn is_space(&self) -> bool {
+        match self.peek() {
+            Some(c) => c.is_whitespace(),
+            None => false,
+        }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.input.chars().nth(self.cur.index as usize)
+    }
+
+    fn next(&mut self) {
+        match self.peek() {
+            Some(t) => {
+                if t == '\n' {
+                    self.cur.line += 1;
+                    self.cur.column = 1;
+                } else {
+                    self.cur.column += 1;
+                }
+            }
+            _ => (),
+        }
+        self.cur.index += 1;
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct TokenAttribute {
+    fragment: Fragment,
+    domain_attribute: TokenDomainAttribute,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+enum TokenDomainAttribute {
+    Nonterminal(String),
+    Terminal(String),
+    None,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+struct Fragment {
+    begin: Coord,
+    end: Coord,
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+struct Coord {
+    line: i32,
+    column: i32,
+    index: i32,
 }

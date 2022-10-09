@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use crate::*;
 
     fn get_arithmetic_grammar() -> Grammar {
@@ -281,6 +283,27 @@ mod tests {
         let incorrect = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", ")"]);
         let res = ParseTree::from_tables_and_tokens(&tables, &incorrect);
         assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_lexical_analysis() {
+        let mut lexer = Lexer::new(
+            r#"
+                ' аксиома
+                < axiom <E > >
+                ' правила грамматики
+                <E <T E' > >
+                <E' <+ T E' >
+                <>>
+                <T <F T' > >
+                <T' <* F T' >
+                <>>
+                <F <n >
+                <( E ) > >
+                "#,
+        );
+        let tokens = lexer.get_tokens();
+        assert!(tokens.is_some());
     }
 
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
