@@ -306,6 +306,33 @@ mod tests {
         assert!(tokens.is_some());
     }
 
+    #[test]
+    fn test_parse_meta_grammar() {
+        let grammar = get_meta_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        println!("{}", dfa.to_graphviz());
+        let tables = ParseTables::from_automaton(&dfa);
+        let mut lexer = Lexer::new(
+            r#"
+                <axiom <S>>
+                <S <A R>>
+                <A <open ax open nterm close close>>
+                <R <T R>
+                    <>>
+                <T <open nterm P close>>
+                <P  <open I close P>
+                    <>>
+                <I  <term I>
+                    <nterm I>
+                    <>>
+            "#,
+        );
+        let tokens = lexer.get_tokens().unwrap();
+        let tree = ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
+        println!("{}", tree.to_graphviz());
+    }
+
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
         v.into_iter()
             .map(|x| Token::<()> {

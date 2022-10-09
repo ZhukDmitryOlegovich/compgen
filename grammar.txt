@@ -1,0 +1,11 @@
+<axiom <S>>
+<S <A R>>
+<A <open ax open nterm close close>>
+<R <T R>
+    <>>
+<T <open nterm P close>>
+<P  <open I close P> 
+    <>>
+<I  <term I>
+    <nterm I>
+    <>>
