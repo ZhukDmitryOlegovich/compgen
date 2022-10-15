@@ -338,6 +338,15 @@ mod tests {
         assert_eq!(parsed, Some(grammar));
     }
 
+    #[test]
+    fn test_tables_to_literal() {
+        let grammar = get_meta_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        let tables = ParseTables::from_automaton(&dfa);
+        println!("{}", tables.to_rust_function());
+    }
+
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
         v.into_iter()
             .map(|x| Token::<()> {

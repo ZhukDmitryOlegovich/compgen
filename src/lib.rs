@@ -4,9 +4,7 @@ const GRAMMAR_AXIOM_NAME: &str = "ROOT";
 
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    fmt::format,
     hash::Hash,
-    ops::Index,
 };
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -107,6 +105,35 @@ impl ToString for Rule {
             result += term.to_string().as_ref();
         }
         result
+    }
+}
+
+impl Rule {
+    fn to_literal(&self) -> String {
+        let nterm = format!("Nonterminal(String::from(\"{}\"))", self.left.0);
+        let mut right = String::new();
+        for term in &self.right {
+            right += match term {
+                Term::Nonterminal(nterm) => format!(
+                    "Term::Nonterminal(Nonterminal(String::from(\"{}\")))",
+                    nterm.0
+                ),
+                Term::Terminal(term) => {
+                    format!("Term::Terminal(Terminal(String::from(\"{}\")))", term.0)
+                }
+            }
+            .as_ref();
+            right += ",\n";
+        }
+        format!(
+            r#"
+            Rule {{
+                left: {},
+                right: vec![{}],     
+            }}
+        "#,
+            nterm, right
+        )
     }
 }
 
@@ -401,6 +428,7 @@ impl DetermenisticLR1Automaton {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 enum LR1Action {
     Reduce(Rule),
     Shift(i32),
@@ -417,6 +445,7 @@ impl ToString for LR1Action {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 struct ParseTables {
     start: i32,
     action: HashMap<(i32, TerminalOrFinish), LR1Action>,
@@ -493,6 +522,50 @@ impl ParseTables {
         for ((state, term), new_state) in &self.goto {
             println!("({}x{})->{}", state, term.0, new_state);
         }
+    }
+
+    fn to_rust_function(&self) -> String {
+        let mut action_entries = String::new();
+        let mut goto_entries = String::new();
+        for ((state, term), action) in &self.action {
+            let term_str = match term {
+                TerminalOrFinish::Terminal(Terminal(s)) => format!(
+                    "TerminalOrFinish::Terminal(Terminal(String::from(\"{}\")))",
+                    s
+                ),
+                TerminalOrFinish::Finish => String::from("TerminalOrFinish::Finish"),
+            };
+            let action_str = match action {
+                LR1Action::Shift(state) => format!("LR1Action::Shift({})", state),
+                LR1Action::Reduce(rule) => format!("LR1Action::Reduce({})", rule.to_literal()),
+                LR1Action::Accept => String::from("LR1Action::Accept"),
+            };
+            let entry = format!("(({}, {}), {}),\n", state, term_str, action_str);
+            action_entries += entry.as_ref();
+        }
+        for ((cur_state, nterm), next_state) in &self.goto {
+            let nterm = format!("Nonterminal(String::from(\"{}\"))", nterm.0);
+            let entry = format!("(({}, {}), {}),\n", cur_state, nterm, next_state);
+            goto_entries += entry.as_ref();
+        }
+        format!(
+            r#"
+        fn get_parse_tables() -> ParseTables {{
+            let action = [
+                {}
+            ].into_iter().collect();
+            let goto = [
+                {}
+            ].into_iter().collect();
+            ParseTables {{
+                start: {},
+                action,
+                goto,
+            }}
+        }}
+        "#,
+            action_entries, goto_entries, self.start
+        )
     }
 }
 
