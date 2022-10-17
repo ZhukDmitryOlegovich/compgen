@@ -1,4 +1,7 @@
+mod parser;
 mod tests;
+
+use crate::parser::*;
 
 const GRAMMAR_AXIOM_NAME: &str = "ROOT";
 
@@ -6,23 +9,6 @@ use std::{
     collections::{BTreeSet, HashMap, HashSet},
     hash::Hash,
 };
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-struct Token<T> {
-    tag: TerminalOrFinish,
-    attribute: T,
-}
-
-#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
-struct Nonterminal(String);
-#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
-struct Terminal(String);
-
-#[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
-enum Term {
-    Nonterminal(Nonterminal),
-    Terminal(Terminal),
-}
 
 impl ToString for Term {
     fn to_string(&self) -> String {
@@ -52,12 +38,6 @@ impl TermOrFinish {
             TerminalOrFinish::Terminal(t) => TermOrFinish::Term(Term::Terminal(t.clone())),
         }
     }
-}
-
-#[derive(PartialEq, Eq, Hash, Debug, Clone, PartialOrd, Ord)]
-enum TerminalOrFinish {
-    Terminal(Terminal),
-    Finish,
 }
 
 impl TerminalOrFinish {
@@ -90,12 +70,6 @@ impl ToString for TerminalOrFinish {
 enum TerminalOrEmpty {
     Terminal(Terminal),
     Empty,
-}
-
-#[derive(PartialEq, Eq, Hash, Debug, Clone, PartialOrd, Ord)]
-struct Rule {
-    left: Nonterminal,
-    right: Vec<Term>,
 }
 
 impl ToString for Rule {
@@ -428,13 +402,6 @@ impl DetermenisticLR1Automaton {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-enum LR1Action {
-    Reduce(Rule),
-    Shift(i32),
-    Accept,
-}
-
 impl ToString for LR1Action {
     fn to_string(&self) -> String {
         match self {
@@ -443,13 +410,6 @@ impl ToString for LR1Action {
             Self::Accept => String::from("Accept"),
         }
     }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-struct ParseTables {
-    start: i32,
-    action: HashMap<(i32, TerminalOrFinish), LR1Action>,
-    goto: HashMap<(i32, Nonterminal), i32>,
 }
 
 impl ParseTables {
@@ -524,6 +484,30 @@ impl ParseTables {
         }
     }
 
+    fn to_rust_source(&self) -> Option<String> {
+        let parser_source = include_bytes!("parser.rs");
+        let parser_source: Vec<String> = String::from_utf8_lossy(parser_source)
+            .lines()
+            .map(|x| x.to_string())
+            .collect();
+        let start_index = parser_source
+            .iter()
+            .position(|x| x.starts_with("//@START_PARSE_TABLES@"))?;
+        let finish_index = parser_source
+            .iter()
+            .position(|x| x.starts_with("//@END_PARSE_TABLES@"))?;
+        let tables = self.to_rust_function();
+        let res = [
+            parser_source[0..=start_index].join("\n").clone(),
+            tables,
+            parser_source[finish_index..parser_source.len()]
+                .join("\n")
+                .clone(),
+        ]
+        .join("\n");
+        Some(res.clone())
+    }
+
     fn to_rust_function(&self) -> String {
         let mut action_entries = String::new();
         let mut goto_entries = String::new();
@@ -566,79 +550,6 @@ impl ParseTables {
         "#,
             action_entries, goto_entries, self.start
         )
-    }
-}
-
-enum ParseTree<T> {
-    Internal(Nonterminal, Vec<ParseTree<T>>),
-    Leaf(Token<T>),
-}
-
-impl<T: Clone> ParseTree<T> {
-    fn from_tables_and_tokens(tables: &ParseTables, tokens: &[Token<T>]) -> Option<ParseTree<T>> {
-        let mut states = vec![tables.start];
-        let mut trees: Vec<ParseTree<T>> = Vec::new();
-        let mut token_index = 0;
-        while token_index < tokens.len() {
-            let token = &tokens[token_index];
-            let cur_state = states.last()?;
-            let action = tables.action.get(&(cur_state.clone(), token.tag.clone()))?;
-            match action {
-                LR1Action::Shift(state) => {
-                    states.push(state.clone());
-                    trees.push(Self::Leaf(token.clone()));
-                    token_index += 1;
-                }
-                LR1Action::Reduce(rule) => {
-                    let mut children: Vec<ParseTree<T>> = Vec::new();
-                    for _ in 0..rule.right.len() {
-                        states.pop();
-                        children.push(trees.pop()?);
-                    }
-                    children.reverse();
-                    trees.push(ParseTree::Internal(rule.left.clone(), children));
-                    let cur = states.last()?;
-                    let next = tables.goto.get(&(cur.clone(), rule.left.clone()))?;
-                    states.push(next.clone());
-                }
-                LR1Action::Accept => {
-                    return trees.pop();
-                }
-            }
-        }
-        None
-    }
-}
-
-impl<T> ParseTree<T> {
-    fn to_graphviz(&self) -> String {
-        let mut counter = 0;
-        let inner = self.to_graphviz_rec(&mut counter);
-        let mut res = String::new();
-        res += "digraph G {\n";
-        res += inner.as_ref();
-        res += "}\n";
-        res
-    }
-
-    fn to_graphviz_rec(&self, counter: &mut i32) -> String {
-        *counter += 1;
-        let id = *counter;
-        let mut result = String::new();
-        match self {
-            ParseTree::Internal(nterm, children) => {
-                result += format!("{} [label=\"{}\"]\n", id, nterm.0).as_ref();
-                for child in children {
-                    let child_id = *counter + 1;
-                    result += format!("{id} -> {child_id}\n").as_ref();
-                    result += child.to_graphviz_rec(counter).as_ref();
-                }
-            }
-            ParseTree::Leaf(token) => {
-                result += format!("{} [label=\"{}\"]\n", id, token.tag.to_string()).as_ref();
-            }
-        }
-        result
     }
 }
 
@@ -1106,4 +1017,36 @@ fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Option<Vec<Term>>
         }
     }
     None
+}
+
+impl<T> ParseTree<T> {
+    fn to_graphviz(&self) -> String {
+        let mut counter = 0;
+        let inner = self.to_graphviz_rec(&mut counter);
+        let mut res = String::new();
+        res += "digraph G {\n";
+        res += inner.as_ref();
+        res += "}\n";
+        res
+    }
+
+    fn to_graphviz_rec(&self, counter: &mut i32) -> String {
+        *counter += 1;
+        let id = *counter;
+        let mut result = String::new();
+        match self {
+            ParseTree::Internal(nterm, children) => {
+                result += format!("{} [label=\"{}\"]\n", id, nterm.0).as_ref();
+                for child in children {
+                    let child_id = *counter + 1;
+                    result += format!("{id} -> {child_id}\n").as_ref();
+                    result += child.to_graphviz_rec(counter).as_ref();
+                }
+            }
+            ParseTree::Leaf(token) => {
+                result += format!("{} [label=\"{}\"]\n", id, token.tag.to_string()).as_ref();
+            }
+        }
+        result
+    }
 }
