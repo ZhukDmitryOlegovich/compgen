@@ -534,7 +534,7 @@ impl ParseTables {
         }
         format!(
             r#"
-        fn get_parse_tables() -> ParseTables {{
+        pub fn get_parse_tables() -> ParseTables {{
             let action = [
                 {}
             ].into_iter().collect();
