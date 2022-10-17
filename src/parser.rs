@@ -89,7 +89,7 @@ impl<T: Clone> ParseTree<T> {
 }
 
 //@START_PARSE_TABLES@
-fn get_parse_tables() -> ParseTables {
+pub fn get_parse_tables() -> ParseTables {
     let action = [
         (
             (

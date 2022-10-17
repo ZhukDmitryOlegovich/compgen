@@ -1,4 +1,4 @@
-mod parser;
+pub mod parser;
 mod tests;
 
 use crate::parser::*;
@@ -112,7 +112,7 @@ impl Rule {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-struct Grammar {
+pub struct Grammar {
     axiom: Nonterminal,
     rules: Vec<Rule>,
 }
@@ -154,13 +154,13 @@ impl ToString for LR1Item {
     }
 }
 
-struct NonDeterministicLR1Automaton {
+pub struct NonDeterministicLR1Automaton {
     edges: HashMap<LR1Item, HashMap<LR1Item, TermOrEmpty>>,
     start: LR1Item,
 }
 
 impl NonDeterministicLR1Automaton {
-    fn from_grammar(grammar: &Grammar) -> NonDeterministicLR1Automaton {
+    pub fn from_grammar(grammar: &Grammar) -> NonDeterministicLR1Automaton {
         let mut by_left: HashMap<Nonterminal, Vec<Rule>> = HashMap::new();
         for rule in &grammar.rules {
             match by_left.get_mut(&rule.left) {
@@ -331,13 +331,13 @@ impl NonDeterministicLR1Automaton {
     }
 }
 
-struct DetermenisticLR1Automaton {
+pub struct DetermenisticLR1Automaton {
     edges: HashMap<BTreeSet<LR1Item>, HashMap<BTreeSet<LR1Item>, Term>>,
     start: BTreeSet<LR1Item>,
 }
 
 impl DetermenisticLR1Automaton {
-    fn from_non_deterministic(
+    pub fn from_non_deterministic(
         automaton: &NonDeterministicLR1Automaton,
     ) -> DetermenisticLR1Automaton {
         let mut edges = HashMap::new();
@@ -413,7 +413,7 @@ impl ToString for LR1Action {
 }
 
 impl ParseTables {
-    fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
+    pub fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
         let mut cur = 0;
         let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
         for (item, _) in &automaton.edges {
@@ -484,7 +484,7 @@ impl ParseTables {
         }
     }
 
-    fn to_rust_source(&self) -> Option<String> {
+    pub fn to_rust_source(&self) -> Option<String> {
         let parser_source = include_bytes!("parser.rs");
         let parser_source: Vec<String> = String::from_utf8_lossy(parser_source)
             .lines()
@@ -633,13 +633,13 @@ fn add_fake_axiom(grammar: &mut Grammar) {
     });
 }
 
-struct Lexer<'a> {
+pub struct Lexer<'a> {
     cur: Coord,
     input: &'a str,
 }
 
 impl<'a> Lexer<'a> {
-    fn new(input: &'a str) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Lexer {
             cur: Coord {
                 line: 1,
@@ -650,7 +650,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn get_tokens(&mut self) -> Option<Vec<Token<TokenAttribute>>> {
+    pub fn get_tokens(&mut self) -> Option<Vec<Token<TokenAttribute>>> {
         let mut res = Vec::new();
         loop {
             let token = self.get_next_token()?;
@@ -790,7 +790,7 @@ impl<'a> Lexer<'a> {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-struct TokenAttribute {
+pub struct TokenAttribute {
     fragment: Fragment,
     domain_attribute: TokenDomainAttribute,
 }
@@ -915,7 +915,7 @@ fn get_meta_grammar() -> Grammar {
     grammar
 }
 
-fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Option<Grammar> {
+pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Option<Grammar> {
     if let ParseTree::Internal(nterm, root_children) = root {
         if nterm.0 != "S" {
             return None;
