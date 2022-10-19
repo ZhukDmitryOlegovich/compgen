@@ -1,4 +1,6 @@
 pub mod parser;
+pub mod calc_parser;
+pub mod calculator;
 mod tests;
 
 use crate::parser::*;
