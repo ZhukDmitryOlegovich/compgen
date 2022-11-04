@@ -356,21 +356,6 @@ mod tests {
         println!("{}", tables.to_rust_source().unwrap());
     }
 
-    #[test]
-    fn test_calculator_lexer() {
-        let mut lexer = calculator::Lexer::new("(1+2)*3-4/5");
-        let tokens = lexer.get_tokens().unwrap();
-        println!("{:?}", tokens);
-    }
-
-    #[test]
-    fn test_calculator_parser() {
-        let mut lexer = calculator::Lexer::new("(1+2)*3-4/5");
-        let tokens = lexer.get_tokens().unwrap();
-        let tables = calc_parser::get_parse_tables();
-        let tree = calc_parser::ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
-        println!("{}", tree.to_graphviz());
-    }
 
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
         v.into_iter()

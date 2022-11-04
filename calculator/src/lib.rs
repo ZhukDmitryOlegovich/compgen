@@ -1,4 +1,7 @@
-use crate::calc_parser::{Terminal, TerminalOrFinish, Token, ParseTree, Nonterminal};
+pub mod parser;
+mod tests;
+
+use crate::parser::{Terminal, TerminalOrFinish, Token, ParseTree};
 
 pub struct Lexer {
     cur: Coordinate,
