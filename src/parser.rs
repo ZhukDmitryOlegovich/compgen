@@ -32,6 +32,15 @@ pub enum TerminalOrFinish {
     Finish,
 }
 
+impl ToString for TerminalOrFinish {
+    fn to_string(&self) -> String {
+        match self {
+            TerminalOrFinish::Terminal(t) => t.0.clone(),
+            TerminalOrFinish::Finish => String::from("$"),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 pub struct Nonterminal(pub String);
 #[derive(PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
@@ -85,6 +94,36 @@ impl<T: Clone> ParseTree<T> {
             }
         }
         None
+    }
+
+    pub fn to_graphviz(&self) -> String {
+        let mut counter = 0;
+        let inner = self.to_graphviz_rec(&mut counter);
+        let mut res = String::new();
+        res += "digraph G {\n";
+        res += inner.as_ref();
+        res += "}\n";
+        res
+    }
+
+    pub fn to_graphviz_rec(&self, counter: &mut i32) -> String {
+        *counter += 1;
+        let id = *counter;
+        let mut result = String::new();
+        match self {
+            ParseTree::Internal(nterm, children) => {
+                result += format!("{} [label=\"{}\"]\n", id, nterm.0).as_ref();
+                for child in children {
+                    let child_id = *counter + 1;
+                    result += format!("{id} -> {child_id}\n").as_ref();
+                    result += child.to_graphviz_rec(counter).as_ref();
+                }
+            }
+            ParseTree::Leaf(token) => {
+                result += format!("{} [label=\"{}\"]\n", id, token.tag.to_string()).as_ref();
+            }
+        }
+        result
     }
 }
 

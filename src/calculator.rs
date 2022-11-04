@@ -1,4 +1,4 @@
-use crate::calc_parser::{Terminal, TerminalOrFinish, Token};
+use crate::calc_parser::{Terminal, TerminalOrFinish, Token, ParseTree, Nonterminal};
 
 pub struct Lexer {
     cur: Coordinate,
@@ -102,6 +102,10 @@ impl Lexer {
             self.cur.index += 1;
         }
     }
+}
+
+fn evaluate_from_tree(tree: ParseTree<TokenAttribute>) -> f64 {
+    0.0
 }
 
 #[derive(Clone, Debug)]
