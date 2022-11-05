@@ -121,6 +121,21 @@ impl LR1Item {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Debug, Clone, PartialOrd, Ord)]
+struct LR0Item {
+    rule: Rule,
+    position: u32,
+}
+
+impl LR0Item {
+    fn from_lr1_item(item: &LR1Item) -> LR0Item {
+        LR0Item {
+            rule: item.rule.clone(),
+            position: item.position.clone(),
+        }
+    }
+}
+
 impl ToString for LR1Item {
     fn to_string(&self) -> String {
         let mut right_str = String::new();
@@ -403,13 +418,36 @@ impl ToString for LR1Action {
     }
 }
 
+pub enum ParseTablesType {
+    LR1,
+    LALR,
+}
+
 impl ParseTables {
-    pub fn from_automaton(automaton: &DetermenisticLR1Automaton) -> ParseTables {
+    pub fn from_automaton(
+        automaton: &DetermenisticLR1Automaton,
+        tables_type: ParseTablesType,
+    ) -> ParseTables {
         let mut cur = 0;
         let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
+        let mut lr0_ids: HashMap<BTreeSet<LR0Item>, i32> = HashMap::new();
         for (item, _) in &automaton.edges {
-            ids.insert(item, cur);
-            cur += 1;
+            match tables_type {
+                ParseTablesType::LR1 => {
+                    ids.insert(item, cur);
+                    cur += 1;
+                }
+                ParseTablesType::LALR => {
+                    let lr0_kernel: BTreeSet<LR0Item> =
+                        item.iter().map(|x| LR0Item::from_lr1_item(x)).collect();
+                    if !lr0_ids.contains_key(&lr0_kernel) {
+                        lr0_ids.insert(lr0_kernel.clone(), cur);
+                        cur += 1;
+                    }
+                    let id = lr0_ids[&lr0_kernel];
+                    ids.insert(item, id);
+                }
+            }
         }
         let mut res = ParseTables {
             start: ids[&automaton.start],
@@ -421,18 +459,18 @@ impl ParseTables {
         res
     }
 
-    fn from_automaton_rec(
-        cur: &BTreeSet<LR1Item>,
+    fn from_automaton_rec<'a: 'b, 'b, 'c: 'b>(
+        cur: &'a BTreeSet<LR1Item>,
         ids: &HashMap<&BTreeSet<LR1Item>, i32>,
-        visited: &mut HashSet<i32>,
-        automaton: &DetermenisticLR1Automaton,
+        visited: &mut HashSet<&'b BTreeSet<LR1Item>>,
+        automaton: &'c DetermenisticLR1Automaton,
         res: &mut ParseTables,
     ) {
         let id = ids[cur];
-        if visited.contains(&id) {
+        if visited.contains(cur) {
             return;
         }
-        visited.insert(id);
+        visited.insert(cur);
         for (other, term) in &automaton.edges[cur] {
             let other_id = ids[other];
             match term {

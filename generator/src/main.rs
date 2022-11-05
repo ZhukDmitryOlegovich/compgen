@@ -14,6 +14,6 @@ fn main() {
     let encoded_grammar = generator::get_grammar_from_tree(&tree).unwrap();
     let nfa = NonDeterministicLR1Automaton::from_grammar(&encoded_grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa);
+    let tables = ParseTables::from_automaton(&dfa, generator::ParseTablesType::LR1);
     println!("{}", tables.to_rust_source().unwrap());
 }
