@@ -17,4 +17,16 @@ mod tests {
         let tree = ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
         println!("{}", tree.to_graphviz());
     }
+
+    #[test]
+    fn test_calculator_eval_ok() {
+        let res = evaluate_from_string("(1+2)*3-4/5");
+        assert_eq!(res, Some(8.2));
+    }
+
+    #[test]
+    fn test_calculator_eval_zero_division() {
+        let res = evaluate_from_string("(1+2)*3-4/0");
+        assert!(res.is_none());
+    }
 }
