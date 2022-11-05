@@ -60,14 +60,16 @@ pub enum ParseTree<T> {
 }
 
 #[derive(Debug)]
-pub struct ParseError<'a, T> {
-    pub token: &'a Token<T>,
+pub struct ParseError<T> {
+    pub token: Token<T>,
 }
 
-fn err_on_none<T, P>(res: Option<T>, token: &Token<P>) -> Result<T, ParseError<P>> {
+fn err_on_none<T, P: Clone>(res: Option<T>, token: &Token<P>) -> Result<T, ParseError<P>> {
     match res {
         Some(v) => Ok(v),
-        None => Err(ParseError { token }),
+        None => Err(ParseError {
+            token: token.clone(),
+        }),
     }
 }
 
@@ -75,7 +77,7 @@ impl<T: Clone> ParseTree<T> {
     pub fn from_tables_and_tokens<'a, 'b>(
         tables: &'a ParseTables,
         tokens: &'b [Token<T>],
-    ) -> Result<ParseTree<T>, ParseError<'b, T>> {
+    ) -> Result<ParseTree<T>, ParseError<T>> {
         let mut states = vec![tables.start];
         let mut trees: Vec<ParseTree<T>> = Vec::new();
         let mut token_index = 0;
@@ -148,136 +150,7 @@ impl<T: Clone> ParseTree<T> {
 pub fn get_parse_tables() -> ParseTables {
     let action = [
         (
-            (28, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("/"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (12, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (19, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Shift(8),
-        ),
-        (
-            (38, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(36),
-        ),
-        (
-            (19, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Shift(14),
-        ),
-        (
-            (18, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
-        ),
-        (
-            (27, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Shift(8),
-        ),
-        (
-            (23, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(22),
-        ),
-        (
-            (16, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (26, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (22, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
-        ),
-        (
-            (4, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (39, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (21, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Shift(8),
-        ),
-        (
-            (37, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(18),
-        ),
-        (
-            (5, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (7, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (5, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (11, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Shift(4),
-        ),
-        (
-            (39, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Shift(38),
-        ),
-        (
-            (24, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            (26, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![
@@ -285,45 +158,6 @@ pub fn get_parse_tables() -> ParseTables {
                     Term::Nonterminal(Nonterminal(String::from("F"))),
                     Term::Nonterminal(Nonterminal(String::from("T'"))),
                 ],
-            }),
-        ),
-        (
-            (29, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (13, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(18),
-        ),
-        (
-            (0, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("*"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (3, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (18, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
             }),
         ),
         (
@@ -334,83 +168,28 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (16, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Shift(9),
-        ),
-        (
-            (24, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            (34, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("*"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (9, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(18),
-        ),
-        (
-            (6, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(22),
-        ),
-        (
-            (18, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
-        ),
-        (
-            (8, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(37),
-        ),
-        (
-            (32, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
                 right: vec![],
             }),
         ),
         (
-            (17, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            (17, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(2),
+        ),
+        (
+            (28, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
             LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
+                left: Nonterminal(String::from("E")),
                 right: vec![
-                    Term::Terminal(Terminal(String::from("-"))),
                     Term::Nonterminal(Nonterminal(String::from("T"))),
                     Term::Nonterminal(Nonterminal(String::from("E'"))),
                 ],
             }),
         ),
         (
-            (26, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Shift(9),
-        ),
-        (
-            (2, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (39, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Shift(13),
-        ),
-        ((1, TerminalOrFinish::Finish), LR1Action::Accept),
-        (
-            (13, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(36),
-        ),
-        (
-            (2, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Shift(9),
-        ),
-        (
-            (5, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            (23, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("F")),
                 right: vec![
@@ -421,15 +200,53 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (21, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Shift(14),
+            (2, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(0),
         ),
         (
-            (15, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(22),
+            (20, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(0),
         ),
         (
-            (0, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            (13, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Shift(11),
+        ),
+        (
+            (6, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Shift(12),
+        ),
+        (
+            (35, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(2),
+        ),
+        (
+            (12, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(36),
+        ),
+        (
+            (18, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (29, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("/"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (22, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(36),
+        ),
+        (
+            (3, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![
@@ -440,17 +257,119 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (12, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
+            (10, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Shift(20),
         ),
         (
-            (18, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            (36, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("F")),
                 right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (8, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(2),
+        ),
+        (
+            (19, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Shift(27),
+        ),
+        (
+            (26, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("*"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (17, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(0),
+        ),
+        (
+            (13, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Shift(12),
+        ),
+        (
+            (33, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Shift(20),
+        ),
+        (
+            (23, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (11, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(35),
+        ),
+        (
+            (23, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (2, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(2),
+        ),
+        (
+            (25, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Shift(12),
+        ),
+        (
+            (26, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("*"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (29, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("/"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (4, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Shift(39),
+        ),
+        (
+            (27, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(36),
+        ),
+        (
+            (1, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T")),
+                right: vec![
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
             }),
         ),
         (
@@ -461,7 +380,7 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (4, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            (37, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("F")),
                 right: vec![
@@ -470,209 +389,24 @@ pub fn get_parse_tables() -> ParseTables {
                     Term::Terminal(Terminal(String::from(")"))),
                 ],
             }),
-        ),
-        (
-            (7, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (27, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Shift(14),
-        ),
-        (
-            (22, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
-        ),
-        (
-            (32, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Shift(15),
-        ),
-        (
-            (12, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Shift(38),
-        ),
-        (
-            (12, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Shift(13),
-        ),
-        (
-            (35, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("T"))),
-                    Term::Nonterminal(Nonterminal(String::from("E'"))),
-                ],
-            }),
-        ),
-        (
-            (26, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Shift(10),
-        ),
-        (
-            (22, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
-        ),
-        (
-            (36, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(18),
-        ),
-        (
-            (19, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (23, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(37),
-        ),
-        (
-            (21, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (10, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(36),
         ),
         (
             (4, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
             LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (18, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
-        ),
-        (
-            (25, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("T"))),
-                    Term::Nonterminal(Nonterminal(String::from("E'"))),
-                ],
-            }),
-        ),
-        (
-            (6, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(37),
-        ),
-        (
-            (38, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(18),
-        ),
-        (
-            (33, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (19, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![],
             }),
         ),
         (
-            (22, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![Term::Terminal(Terminal(String::from("n")))],
-            }),
+            (15, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(36),
         ),
         (
-            (39, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
+            (32, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Shift(27),
         ),
         (
-            (34, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("/"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (15, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(37),
-        ),
-        (
-            (4, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (5, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (20, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("E'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("+"))),
-                    Term::Nonterminal(Nonterminal(String::from("T"))),
-                    Term::Nonterminal(Nonterminal(String::from("E'"))),
-                ],
-            }),
-        ),
-        (
-            (28, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("/"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (30, TerminalOrFinish::Finish),
+            (9, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("E'")),
                 right: vec![
@@ -683,43 +417,7 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (10, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(18),
-        ),
-        (
-            (3, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (4, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("F")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("("))),
-                    Term::Nonterminal(Nonterminal(String::from("E"))),
-                    Term::Terminal(Terminal(String::from(")"))),
-                ],
-            }),
-        ),
-        (
-            (29, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Shift(15),
-        ),
-        (
-            (27, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (0, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            (3, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![
@@ -730,37 +428,87 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
+            (30, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("/"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (34, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Shift(22),
+        ),
+        (
+            (22, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(35),
+        ),
+        (
+            (39, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(2),
+        ),
+        (
+            (4, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (36, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (23, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (31, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T")),
+                right: vec![
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
             (34, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("/"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (14, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(37),
-        ),
-        (
-            (8, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(22),
-        ),
-        (
-            (27, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
                 right: vec![],
             }),
         ),
         (
-            (14, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
-            LR1Action::Shift(22),
+            (7, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Shift(39),
         ),
         (
-            (41, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            (12, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(35),
+        ),
+        (
+            (36, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (31, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T")),
                 right: vec![
@@ -770,41 +518,103 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (34, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            (4, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("/"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
+                right: vec![],
             }),
         ),
         (
-            (33, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Shift(15),
+            (27, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(35),
         ),
         (
-            (36, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            (11, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
             LR1Action::Shift(36),
         ),
         (
-            (39, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            (16, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (6, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Shift(11),
+        ),
+        (
+            (21, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Shift(23),
+        ),
+        (
+            (23, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (38, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E")),
+                right: vec![
+                    Term::Nonterminal(Nonterminal(String::from("T"))),
+                    Term::Nonterminal(Nonterminal(String::from("E'"))),
+                ],
+            }),
+        ),
+        (
+            (37, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (0, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (34, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        ((14, TerminalOrFinish::Finish), LR1Action::Accept),
+        (
+            (25, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Shift(11),
+        ),
+        (
+            (18, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![],
             }),
         ),
         (
-            (7, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
-            LR1Action::Shift(13),
+            (20, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(2),
         ),
         (
-            (32, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Shift(6),
+            (19, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Shift(22),
         ),
         (
-            (28, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            (30, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![
@@ -815,7 +625,69 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (3, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            (18, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Shift(8),
+        ),
+        (
+            (7, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Shift(8),
+        ),
+        (
+            (19, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (25, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (0, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (40, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("-"))),
+                    Term::Nonterminal(Nonterminal(String::from("T"))),
+                    Term::Nonterminal(Nonterminal(String::from("E'"))),
+                ],
+            }),
+        ),
+        (
+            (6, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (15, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
+            LR1Action::Shift(35),
+        ),
+        (
+            (8, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(0),
+        ),
+        (
+            (0, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (1, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T")),
                 right: vec![
@@ -825,11 +697,40 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (16, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Shift(10),
+            (39, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(0),
         ),
         (
-            (40, TerminalOrFinish::Finish),
+            (34, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Shift(27),
+        ),
+        (
+            (33, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (7, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (29, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("/"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (41, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("E'")),
                 right: vec![
@@ -840,55 +741,11 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (31, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Shift(5),
+            (16, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Shift(20),
         ),
         (
-            (9, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(36),
-        ),
-        (
-            (21, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
-        ),
-        (
-            (37, TerminalOrFinish::Terminal(Terminal(String::from("(")))),
-            LR1Action::Shift(36),
-        ),
-        (
-            (41, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (29, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Shift(6),
-        ),
-        (
-            (24, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("*"))),
-                    Term::Nonterminal(Nonterminal(String::from("F"))),
-                    Term::Nonterminal(Nonterminal(String::from("T'"))),
-                ],
-            }),
-        ),
-        (
-            (7, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
-            LR1Action::Shift(38),
-        ),
-        (
-            (5, TerminalOrFinish::Finish),
+            (37, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("F")),
                 right: vec![
@@ -899,28 +756,65 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (27, TerminalOrFinish::Finish),
+            (36, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (24, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Shift(37),
+        ),
+        (
+            (32, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![],
             }),
         ),
         (
-            (12, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            (0, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (16, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Shift(17),
+        ),
+        (
+            (13, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (10, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Shift(17),
+        ),
+        (
+            (10, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (7, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T'")),
                 right: vec![],
             }),
         ),
         (
-            (21, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T'")),
-                right: vec![],
-            }),
+            (35, TerminalOrFinish::Terminal(Terminal(String::from("n")))),
+            LR1Action::Shift(0),
         ),
         (
-            (41, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            (31, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("T")),
                 right: vec![
@@ -930,62 +824,170 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (22, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            (0, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("F")),
                 right: vec![Term::Terminal(Terminal(String::from("n")))],
             }),
         ),
         (
-            (2, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Shift(10),
+            (32, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
         ),
         (
-            (33, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
-            LR1Action::Shift(6),
+            (33, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Shift(17),
+        ),
+        (
+            (4, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Shift(8),
+        ),
+        (
+            (36, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![Term::Terminal(Terminal(String::from("n")))],
+            }),
+        ),
+        (
+            (19, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (30, TerminalOrFinish::Terminal(Terminal(String::from("-")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("/"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (1, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T")),
+                right: vec![
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
+        ),
+        (
+            (32, TerminalOrFinish::Terminal(Terminal(String::from("/")))),
+            LR1Action::Shift(22),
+        ),
+        (
+            (18, TerminalOrFinish::Terminal(Terminal(String::from("*")))),
+            LR1Action::Shift(39),
+        ),
+        (
+            (37, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (37, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("F")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("("))),
+                    Term::Nonterminal(Nonterminal(String::from("E"))),
+                    Term::Terminal(Terminal(String::from(")"))),
+                ],
+            }),
+        ),
+        (
+            (32, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (5, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("E'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("+"))),
+                    Term::Nonterminal(Nonterminal(String::from("T"))),
+                    Term::Nonterminal(Nonterminal(String::from("E'"))),
+                ],
+            }),
+        ),
+        (
+            (18, TerminalOrFinish::Terminal(Terminal(String::from(")")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![],
+            }),
+        ),
+        (
+            (3, TerminalOrFinish::Terminal(Terminal(String::from("+")))),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T'")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("*"))),
+                    Term::Nonterminal(Nonterminal(String::from("F"))),
+                    Term::Nonterminal(Nonterminal(String::from("T'"))),
+                ],
+            }),
         ),
     ]
     .into_iter()
     .collect();
     let goto = [
-        ((9, Nonterminal(String::from("T"))), 2),
-        ((26, Nonterminal(String::from("E'"))), 17),
-        ((10, Nonterminal(String::from("T"))), 26),
-        ((21, Nonterminal(String::from("T'"))), 3),
-        ((37, Nonterminal(String::from("T"))), 16),
-        ((27, Nonterminal(String::from("T'"))), 28),
-        ((39, Nonterminal(String::from("T'"))), 24),
-        ((2, Nonterminal(String::from("E'"))), 20),
-        ((36, Nonterminal(String::from("T"))), 16),
-        ((37, Nonterminal(String::from("F"))), 7),
-        ((6, Nonterminal(String::from("F"))), 21),
-        ((9, Nonterminal(String::from("F"))), 7),
-        ((37, Nonterminal(String::from("E"))), 31),
-        ((12, Nonterminal(String::from("T'"))), 34),
-        ((36, Nonterminal(String::from("E"))), 11),
-        ((16, Nonterminal(String::from("E'"))), 25),
-        ((15, Nonterminal(String::from("T"))), 29),
-        ((33, Nonterminal(String::from("E'"))), 30),
-        ((32, Nonterminal(String::from("E'"))), 35),
-        ((29, Nonterminal(String::from("E'"))), 40),
-        ((6, Nonterminal(String::from("T"))), 33),
-        ((8, Nonterminal(String::from("F"))), 19),
-        ((23, Nonterminal(String::from("T"))), 32),
-        ((36, Nonterminal(String::from("F"))), 7),
-        ((14, Nonterminal(String::from("F"))), 27),
-        ((10, Nonterminal(String::from("F"))), 7),
-        ((19, Nonterminal(String::from("T'"))), 0),
-        ((13, Nonterminal(String::from("F"))), 12),
-        ((23, Nonterminal(String::from("F"))), 21),
-        ((7, Nonterminal(String::from("T'"))), 41),
-        ((23, Nonterminal(String::from("E"))), 1),
-        ((38, Nonterminal(String::from("F"))), 39),
-        ((15, Nonterminal(String::from("F"))), 21),
+        ((17, Nonterminal(String::from("F"))), 7),
+        ((18, Nonterminal(String::from("T'"))), 26),
+        ((10, Nonterminal(String::from("E'"))), 28),
+        ((17, Nonterminal(String::from("T"))), 16),
+        ((35, Nonterminal(String::from("T"))), 10),
+        ((12, Nonterminal(String::from("T"))), 13),
+        ((33, Nonterminal(String::from("E'"))), 9),
+        ((2, Nonterminal(String::from("E"))), 21),
+        ((2, Nonterminal(String::from("T"))), 10),
+        ((15, Nonterminal(String::from("F"))), 19),
+        ((15, Nonterminal(String::from("E"))), 14),
+        ((34, Nonterminal(String::from("T'"))), 3),
+        ((20, Nonterminal(String::from("T"))), 33),
+        ((11, Nonterminal(String::from("F"))), 19),
+        ((32, Nonterminal(String::from("T'"))), 29),
+        ((39, Nonterminal(String::from("F"))), 18),
+        ((2, Nonterminal(String::from("F"))), 7),
+        ((27, Nonterminal(String::from("F"))), 34),
+        ((6, Nonterminal(String::from("E'"))), 38),
+        ((25, Nonterminal(String::from("E'"))), 5),
+        ((4, Nonterminal(String::from("T'"))), 30),
+        ((8, Nonterminal(String::from("F"))), 4),
+        ((13, Nonterminal(String::from("E'"))), 40),
+        ((15, Nonterminal(String::from("T"))), 6),
+        ((35, Nonterminal(String::from("F"))), 7),
+        ((20, Nonterminal(String::from("F"))), 7),
+        ((19, Nonterminal(String::from("T'"))), 31),
+        ((35, Nonterminal(String::from("E"))), 24),
+        ((16, Nonterminal(String::from("E'"))), 41),
+        ((11, Nonterminal(String::from("T"))), 25),
+        ((12, Nonterminal(String::from("F"))), 19),
+        ((7, Nonterminal(String::from("T'"))), 1),
+        ((22, Nonterminal(String::from("F"))), 32),
     ]
     .into_iter()
     .collect();
     ParseTables {
-        start: 23,
+        start: 15,
         action,
         goto,
     }

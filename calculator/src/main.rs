@@ -7,10 +7,10 @@ fn main() {
     stdin().read_line(&mut buf).expect("failed to read line");
     let res = evaluate_from_string(&buf);
     match res {
-        Some(n) => {
+        Ok(n) => {
             println!("{}", n);
         }
-        None => {
+        Err(_) => {
             println!("Failed to evaluate expression");
         }
     }

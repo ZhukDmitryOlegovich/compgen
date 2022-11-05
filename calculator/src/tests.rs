@@ -5,7 +5,7 @@ mod tests {
     #[test]
     fn test_calculator_lexer() {
         let mut lexer = Lexer::new("(1+2)*3-4/5");
-        let tokens = lexer.get_tokens().unwrap();
+        let tokens = lexer.get_tokens();
         println!("{:?}", tokens);
     }
 
@@ -21,12 +21,12 @@ mod tests {
     #[test]
     fn test_calculator_eval_ok() {
         let res = evaluate_from_string("(1+2)*3-4/5");
-        assert_eq!(res, Some(8.2));
+        assert_eq!(res.unwrap(), 8.2);
     }
 
     #[test]
     fn test_calculator_eval_zero_division() {
         let res = evaluate_from_string("(1+2)*3-4/0");
-        assert!(res.is_none());
+        assert!(res.is_err());
     }
 }

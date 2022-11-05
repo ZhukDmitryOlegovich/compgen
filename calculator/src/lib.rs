@@ -1,11 +1,26 @@
 pub mod parser;
 mod tests;
 
+use parser::ParseError;
+
 use crate::parser::{ParseTree, Terminal, TerminalOrFinish, Token};
 
 pub struct Lexer {
     cur: Coordinate,
     input: String,
+}
+
+#[derive(Debug)]
+pub enum CalculatorError {
+    LexerError(Coordinate),
+    ParserError(ParseError<TokenAttribute>),
+    ZeroDivisionError,
+}
+
+impl<'a> From<ParseError<TokenAttribute>> for CalculatorError {
+    fn from(err: ParseError<TokenAttribute>) -> Self {
+        CalculatorError::ParserError(err)
+    }
 }
 
 impl Lexer {
@@ -20,7 +35,7 @@ impl Lexer {
         }
     }
 
-    pub fn get_tokens(&mut self) -> Option<Vec<Token<TokenAttribute>>> {
+    pub fn get_tokens(&mut self) -> Result<Vec<Token<TokenAttribute>>, CalculatorError> {
         let mut res = Vec::new();
         loop {
             let token = self.get_next_token()?;
@@ -29,10 +44,10 @@ impl Lexer {
                 break;
             }
         }
-        Some(res)
+        Ok(res)
     }
 
-    fn get_next_token(&mut self) -> Option<Token<TokenAttribute>> {
+    fn get_next_token(&mut self) -> Result<Token<TokenAttribute>, CalculatorError> {
         self.skip_spaces();
         let begin = self.cur.clone();
         match self.peek() {
@@ -43,7 +58,7 @@ impl Lexer {
                         .parse::<i32>()
                         .unwrap();
                     let end = self.cur.clone();
-                    return Some(Token {
+                    return Ok(Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from("n"))),
                         attribute: TokenAttribute {
                             fragment: Fragment { begin, end },
@@ -53,7 +68,7 @@ impl Lexer {
                 } else if ['+', '-', '*', '/', '(', ')'].contains(&cur) {
                     self.next();
                     let end = self.cur.clone();
-                    return Some(Token {
+                    return Ok(Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from(String::from(cur)))),
                         attribute: TokenAttribute {
                             fragment: Fragment { begin, end },
@@ -61,10 +76,10 @@ impl Lexer {
                         },
                     });
                 } else {
-                    None
+                    return Err(CalculatorError::LexerError(self.cur.clone()));
                 }
             }
-            None => Some(Token {
+            None => Ok(Token {
                 tag: TerminalOrFinish::Finish,
                 attribute: TokenAttribute {
                     fragment: Fragment {
@@ -130,7 +145,7 @@ impl<T> ParseTree<T> {
     }
 }
 
-pub fn evaluate_from_string(expr: &str) -> Option<f64> {
+pub fn evaluate_from_string(expr: &str) -> Result<f64, CalculatorError> {
     let mut lexer = Lexer::new(expr);
     let tokens = lexer.get_tokens()?;
     let tables = parser::get_parse_tables();
@@ -138,64 +153,92 @@ pub fn evaluate_from_string(expr: &str) -> Option<f64> {
     evaluate_from_tree(&tree)
 }
 
-fn evaluate_from_tree(tree: &ParseTree<TokenAttribute>) -> Option<f64> {
-    let (_, children) = tree.as_internal()?;
-    let res1 = evaluate_from_tree_t(children.get(0)?)?;
-    let res2 = evaluate_from_tree_et(children.get(1)?)?;
-    Some(res1 + res2)
+// <E <T E'>>
+fn evaluate_from_tree(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
+    let (_, children) = tree.as_internal().expect("must be internal node");
+    let res1 = evaluate_from_tree_t(&children[0])?;
+    let res2 = evaluate_from_tree_et(&children[1])?;
+    Ok(res1 + res2)
 }
 
-fn evaluate_from_tree_t(tree: &ParseTree<TokenAttribute>) -> Option<f64> {
-    let (_, children) = tree.as_internal()?;
-    let res1 = evaluate_from_tree_f(children.get(0)?)?;
-    let res2 = evaluate_from_tree_tt(children.get(1)?)?;
-    Some(res1 * res2)
-}
-
-fn evaluate_from_tree_f(tree: &ParseTree<TokenAttribute>) -> Option<f64> {
-    let (_, children) = tree.as_internal()?;
-    if children.len() == 1 {
-        let c = children[0].as_leaf()?;
-        let n = c.attribute.domain_attribute.as_number()?;
-        Some(f64::from(n))
+//<E' <+ T E'>
+//    <- T E'>
+//    <>>
+fn evaluate_from_tree_et(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
+    let (_, children) = tree.as_internal().expect("must be internal node");
+    if children.len() == 0 {
+        Ok(0.0)
     } else {
-        let c = children.get(1)?;
-        evaluate_from_tree(c)
+        let sign = children[0]
+            .as_leaf()
+            .expect("must be leaf node")
+            .tag
+            .as_terminal()
+            .expect("must be a terminal")
+            .0
+            .clone();
+        let res1 = evaluate_from_tree_t(&children[1])?;
+        let res2 = evaluate_from_tree_et(&children[2])?;
+        let res = res1 + res2;
+        if sign == "-" {
+            return Ok(-res);
+        }
+        Ok(res)
     }
 }
 
-fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Option<f64> {
-    let (_, children) = tree.as_internal()?;
+// <T <F T'>>
+fn evaluate_from_tree_t(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
+    let (_, children) = tree.as_internal().expect("must be internal node");
+    let res1 = evaluate_from_tree_f(&children[0])?;
+    let res2 = evaluate_from_tree_tt(&children[1])?;
+    Ok(res1 * res2)
+}
+
+// <T' <* F T'>
+//     </ F T'>
+//     <>>
+fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
+    let (_, children) = tree.as_internal().expect("must be internal node");
     if children.len() == 0 {
-        Some(1.0)
+        Ok(1.0)
     } else {
-        let sign = children.get(0)?.as_leaf()?.tag.as_terminal()?.0.clone();
-        let res1 = evaluate_from_tree_f(children.get(1)?)?;
-        let res2 = evaluate_from_tree_tt(children.get(2)?)?;
+        let sign = children[0]
+            .as_leaf()
+            .expect("must be leaf node")
+            .tag
+            .as_terminal()
+            .expect("must be terminal")
+            .0
+            .clone();
+        let res1 = evaluate_from_tree_f(&children[1])?;
+        let res2 = evaluate_from_tree_tt(&children[2])?;
         let res = res1 * res2;
         if sign == "/" {
             if res == 0.0 {
-                return None;
+                return Err(CalculatorError::ZeroDivisionError);
             }
-            return Some(1.0 / res);
+            return Ok(1.0 / res);
         }
-        Some(res)
+        Ok(res)
     }
 }
 
-fn evaluate_from_tree_et(tree: &ParseTree<TokenAttribute>) -> Option<f64> {
-    let (_, children) = tree.as_internal()?;
-    if children.len() == 0 {
-        Some(0.0)
+// <F <n>
+//    <( E )>>
+fn evaluate_from_tree_f(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
+    let (_, children) = tree.as_internal().expect("must be internal node");
+    if children.len() == 1 {
+        let c = children[0].as_leaf().expect("must be leaf node");
+        let n = c
+            .attribute
+            .domain_attribute
+            .as_number()
+            .expect("must be number");
+        Ok(f64::from(n))
     } else {
-        let sign = children.get(0)?.as_leaf()?.tag.as_terminal()?.0.clone();
-        let res1 = evaluate_from_tree_t(children.get(1)?)?;
-        let res2 = evaluate_from_tree_et(children.get(2)?)?;
-        let res = res1 + res2;
-        if sign == "-" {
-            return Some(-res);
-        }
-        Some(res)
+        let c = &children[1];
+        evaluate_from_tree(c)
     }
 }
 
