@@ -123,7 +123,7 @@ impl<T> ParseTree<T> {
     }
 }
 
-fn evaluate_from_string(expr: &str) -> Option<f64> {
+pub fn evaluate_from_string(expr: &str) -> Option<f64> {
     let mut lexer = Lexer::new(expr);
     let tokens = lexer.get_tokens().unwrap();
     let tables = parser::get_parse_tables();
