@@ -513,7 +513,7 @@ impl ParseTables {
         }
     }
 
-    pub fn to_rust_source(&self) -> Option<String> {
+    pub fn to_rust_source(&self) -> String {
         let parser_source = include_bytes!("parser.rs");
         let parser_source: Vec<String> = String::from_utf8_lossy(parser_source)
             .lines()
@@ -521,10 +521,12 @@ impl ParseTables {
             .collect();
         let start_index = parser_source
             .iter()
-            .position(|x| x.starts_with("//@START_PARSE_TABLES@"))?;
+            .position(|x| x.starts_with("//@START_PARSE_TABLES@"))
+            .expect("no @START_PARSE_TABLES@ comment in parser.rs");
         let finish_index = parser_source
             .iter()
-            .position(|x| x.starts_with("//@END_PARSE_TABLES@"))?;
+            .position(|x| x.starts_with("//@END_PARSE_TABLES@"))
+            .expect("no @END_Pno @END_PARSE_TABLES@ comment in parser.rs");
         let tables = self.to_rust_function();
         let res = [
             parser_source[0..=start_index].join("\n").clone(),
@@ -534,7 +536,7 @@ impl ParseTables {
                 .clone(),
         ]
         .join("\n");
-        Some(res.clone())
+        res.clone()
     }
 
     fn to_rust_function(&self) -> String {
@@ -679,27 +681,27 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn get_tokens(&mut self) -> Option<Vec<Token<TokenAttribute>>> {
+    pub fn get_tokens(&mut self) -> Vec<Token<TokenAttribute>> {
         let mut res = Vec::new();
         loop {
-            let token = self.get_next_token()?;
+            let token = self.get_next_token();
             let is_finish = token.tag == TerminalOrFinish::Finish;
             res.push(token);
             if is_finish {
                 break;
             }
         }
-        Some(res)
+        res
     }
 
-    fn get_next_token(&mut self) -> Option<Token<TokenAttribute>> {
+    fn get_next_token(&mut self) -> Token<TokenAttribute> {
         self.skip_spaces();
         let begin = self.cur.clone();
         match self.peek() {
             Some(ch) => {
                 if ch.is_uppercase() {
                     let res = self.read_while(|c| !c.is_whitespace() && c != '<' && c != '>');
-                    Some(Token {
+                    Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
                         attribute: TokenAttribute {
                             fragment: Fragment {
@@ -708,10 +710,10 @@ impl<'a> Lexer<'a> {
                             },
                             domain_attribute: TokenDomainAttribute::Nonterminal(res),
                         },
-                    })
+                    }
                 } else if ch == '<' {
                     self.next();
-                    Some(Token {
+                    Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from("open"))),
                         attribute: TokenAttribute {
                             fragment: Fragment {
@@ -720,10 +722,10 @@ impl<'a> Lexer<'a> {
                             },
                             domain_attribute: TokenDomainAttribute::None,
                         },
-                    })
+                    }
                 } else if ch == '>' {
                     self.next();
-                    Some(Token {
+                    Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from("close"))),
                         attribute: TokenAttribute {
                             fragment: Fragment {
@@ -732,7 +734,7 @@ impl<'a> Lexer<'a> {
                             },
                             domain_attribute: TokenDomainAttribute::None,
                         },
-                    })
+                    }
                 } else if ch == '\'' {
                     self.read_while(|c| c != '\n');
                     self.next();
@@ -740,7 +742,7 @@ impl<'a> Lexer<'a> {
                 } else {
                     let res = self.read_while(|c| !c.is_whitespace() && c != '<' && c != '>');
                     let tag_name = if res == "axiom" { "ax" } else { "term" };
-                    Some(Token {
+                    Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from(tag_name))),
                         attribute: TokenAttribute {
                             fragment: Fragment {
@@ -749,10 +751,10 @@ impl<'a> Lexer<'a> {
                             },
                             domain_attribute: TokenDomainAttribute::Terminal(res),
                         },
-                    })
+                    }
                 }
             }
-            None => Some(Token {
+            None => Token {
                 tag: TerminalOrFinish::Finish,
                 attribute: TokenAttribute {
                     fragment: Fragment {
@@ -761,7 +763,7 @@ impl<'a> Lexer<'a> {
                     },
                     domain_attribute: TokenDomainAttribute::None,
                 },
-            }),
+            },
         }
     }
 
@@ -838,212 +840,91 @@ struct Fragment {
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-struct Coord {
+pub struct Coord {
     line: i32,
     column: i32,
     index: i32,
 }
 
-fn get_meta_grammar() -> Grammar {
-    let mut grammar = Grammar {
-        // <axiom <S>>
-        // <S <A R>>
-        // <A <open ax open nterm close close>>
-        // <R <T R>
-        //     <>>
-        // <T <open nterm P close>>
-        // <P  <open I close P>
-        //     <>>
-        // <I  <term I>
-        //     <nterm I>
-        //     <>>
-        axiom: Nonterminal(String::from("S")),
-        rules: vec![
-            // <S <A R>>
-            Rule {
-                left: Nonterminal(String::from("S")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("A"))),
-                    Term::Nonterminal(Nonterminal(String::from("R"))),
-                ],
-            },
-            // <A <open ax open nterm close close>>
-            Rule {
-                left: Nonterminal(String::from("A")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("open"))),
-                    Term::Terminal(Terminal(String::from("ax"))),
-                    Term::Terminal(Terminal(String::from("open"))),
-                    Term::Terminal(Terminal(String::from("nterm"))),
-                    Term::Terminal(Terminal(String::from("close"))),
-                    Term::Terminal(Terminal(String::from("close"))),
-                ],
-            },
-            // <R <T R>>
-            Rule {
-                left: Nonterminal(String::from("R")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("T"))),
-                    Term::Nonterminal(Nonterminal(String::from("R"))),
-                ],
-            },
-            // <R <>>
-            Rule {
-                left: Nonterminal(String::from("R")),
-                right: vec![],
-            },
-            // <T <open nterm P close>>
-            Rule {
-                left: Nonterminal(String::from("T")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("open"))),
-                    Term::Terminal(Terminal(String::from("nterm"))),
-                    Term::Nonterminal(Nonterminal(String::from("P"))),
-                    Term::Terminal(Terminal(String::from("close"))),
-                ],
-            },
-            // <P  <open I close P>>
-            Rule {
-                left: Nonterminal(String::from("P")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("open"))),
-                    Term::Nonterminal(Nonterminal(String::from("I"))),
-                    Term::Terminal(Terminal(String::from("close"))),
-                    Term::Nonterminal(Nonterminal(String::from("P"))),
-                ],
-            },
-            // <P <>>
-            Rule {
-                left: Nonterminal(String::from("P")),
-                right: vec![],
-            },
-            // <I  <term I>>
-            Rule {
-                left: Nonterminal(String::from("I")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("term"))),
-                    Term::Nonterminal(Nonterminal(String::from("I"))),
-                ],
-            },
-            // <I  <nterm I>>
-            Rule {
-                left: Nonterminal(String::from("I")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("nterm"))),
-                    Term::Nonterminal(Nonterminal(String::from("I"))),
-                ],
-            },
-            // <I  <>>
-            Rule {
-                left: Nonterminal(String::from("I")),
-                right: vec![],
-            },
-        ],
-    };
-    add_fake_axiom(&mut grammar);
-    grammar
-}
-
-pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Option<Grammar> {
-    if let ParseTree::Internal(nterm, root_children) = root {
-        if nterm.0 != "S" {
-            return None;
-        }
-        if let ParseTree::Internal(nterm, children) = root_children.get(0)? {
-            if nterm.0 != "A" {
-                return None;
-            }
-            if let ParseTree::Leaf(t) = children.get(3)? {
+pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Grammar {
+    if let ParseTree::Internal(_, root_children) = root {
+        if let ParseTree::Internal(_, children) = &root_children[0] {
+            if let ParseTree::Leaf(t) = &children[3] {
                 if let TokenDomainAttribute::Nonterminal(axiom_name) =
                     t.attribute.domain_attribute.clone()
                 {
                     let axiom = Nonterminal(axiom_name);
-                    let rules = get_rules_from_tree(root_children.get(1)?)?;
+                    let rules = get_rules_from_tree(&root_children[1]);
                     let mut grammar = Grammar { axiom, rules };
                     add_fake_axiom(&mut grammar);
-                    return Some(grammar);
+                    return grammar;
                 }
             }
         }
     }
-    return None;
+    panic!("");
 }
 
-fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Option<Vec<Rule>> {
-    if let ParseTree::Internal(nterm, children) = root {
-        if nterm.0 != "R" {
-            return None;
-        }
+fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
+    if let ParseTree::Internal(_, children) = root {
         if children.len() == 0 {
-            return Some(Vec::new());
+            return Vec::new();
         }
-        let right = get_rules_from_tree(children.get(1)?)?;
-        if let ParseTree::Internal(nterm, children) = children.get(0)? {
-            if nterm.0 != "T" {
-                return None;
-            }
-            if let ParseTree::Leaf(t) = children.get(1)? {
+        let right = get_rules_from_tree(&children[1]);
+        if let ParseTree::Internal(_, children) = &children[0] {
+            if let ParseTree::Leaf(t) = &children[1] {
                 if let TokenDomainAttribute::Nonterminal(name) =
                     t.attribute.domain_attribute.clone()
                 {
                     let nterm = Nonterminal(name);
-                    let mut rules = get_subrules_from_tree(&nterm, children.get(2)?)?;
+                    let mut rules = get_subrules_from_tree(&nterm, &children[2]);
                     rules.extend(right);
-                    return Some(rules);
+                    return rules;
                 }
             }
         }
     }
-    return None;
+    panic!("");
 }
 
-fn get_subrules_from_tree(
-    nterm: &Nonterminal,
-    root: &ParseTree<TokenAttribute>,
-) -> Option<Vec<Rule>> {
-    if let ParseTree::Internal(cur_nterm, children) = root {
-        if cur_nterm.0 != "P" {
-            return None;
-        }
+fn get_subrules_from_tree(nterm: &Nonterminal, root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
+    if let ParseTree::Internal(_, children) = root {
         if children.len() == 0 {
-            return Some(Vec::new());
+            return Vec::new();
         }
-        let right = get_subrules_from_tree(nterm, children.get(3)?)?;
-        let terms = get_terms_from_subtree(children.get(1)?)?;
+        let right = get_subrules_from_tree(nterm, &children[3]);
+        let terms = get_terms_from_subtree(&children[1]);
         let mut res = vec![Rule {
             left: nterm.clone(),
             right: terms,
         }];
         res.extend(right);
-        return Some(res);
+        return res;
     }
-    None
+    panic!("");
 }
 
-fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Option<Vec<Term>> {
+fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Vec<Term> {
     if let ParseTree::Internal(nterm, children) = root {
-        if nterm.0 != "I" {
-            return None;
-        }
         if children.len() == 0 {
-            return Some(Vec::new());
+            return Vec::new();
         }
-        let right = get_terms_from_subtree(children.get(1)?)?;
-        if let ParseTree::Leaf(t) = children.get(0)? {
+        let right = get_terms_from_subtree(&children[1]);
+        if let ParseTree::Leaf(t) = &children[0] {
             match t.attribute.domain_attribute.clone() {
                 TokenDomainAttribute::Nonterminal(nterm) => {
                     let mut res = vec![Term::Nonterminal(Nonterminal(nterm))];
                     res.extend(right);
-                    return Some(res);
+                    return res;
                 }
                 TokenDomainAttribute::Terminal(term) => {
                     let mut res = vec![Term::Terminal(Terminal(term))];
                     res.extend(right);
-                    return Some(res);
+                    return res;
                 }
                 _ => (),
             }
         }
     }
-    None
+    panic!("");
 }

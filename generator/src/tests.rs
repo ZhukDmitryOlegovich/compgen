@@ -305,7 +305,7 @@ mod tests {
                 "#,
         );
         let tokens = lexer.get_tokens();
-        assert!(tokens.is_some());
+        println!("{:?}", tokens);
     }
 
     #[test]
@@ -330,12 +330,12 @@ mod tests {
                     <>>
             "#,
         );
-        let tokens = lexer.get_tokens().unwrap();
+        let tokens = lexer.get_tokens();
         let tree = ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
         println!("{}", tree.to_graphviz());
 
         let parsed = get_grammar_from_tree(&tree);
-        assert_eq!(parsed, Some(grammar));
+        assert_eq!(parsed, grammar);
     }
 
     #[test]
@@ -353,7 +353,7 @@ mod tests {
         let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
         let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
         let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
-        println!("{}", tables.to_rust_source().unwrap());
+        println!("{}", tables.to_rust_source());
     }
 
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
@@ -367,5 +367,105 @@ mod tests {
                 attribute: (),
             }])
             .collect()
+    }
+
+    fn get_meta_grammar() -> Grammar {
+        let mut grammar = Grammar {
+            // <axiom <S>>
+            // <S <A R>>
+            // <A <open ax open nterm close close>>
+            // <R <T R>
+            //     <>>
+            // <T <open nterm P close>>
+            // <P  <open I close P>
+            //     <>>
+            // <I  <term I>
+            //     <nterm I>
+            //     <>>
+            axiom: Nonterminal(String::from("S")),
+            rules: vec![
+                // <S <A R>>
+                Rule {
+                    left: Nonterminal(String::from("S")),
+                    right: vec![
+                        Term::Nonterminal(Nonterminal(String::from("A"))),
+                        Term::Nonterminal(Nonterminal(String::from("R"))),
+                    ],
+                },
+                // <A <open ax open nterm close close>>
+                Rule {
+                    left: Nonterminal(String::from("A")),
+                    right: vec![
+                        Term::Terminal(Terminal(String::from("open"))),
+                        Term::Terminal(Terminal(String::from("ax"))),
+                        Term::Terminal(Terminal(String::from("open"))),
+                        Term::Terminal(Terminal(String::from("nterm"))),
+                        Term::Terminal(Terminal(String::from("close"))),
+                        Term::Terminal(Terminal(String::from("close"))),
+                    ],
+                },
+                // <R <T R>>
+                Rule {
+                    left: Nonterminal(String::from("R")),
+                    right: vec![
+                        Term::Nonterminal(Nonterminal(String::from("T"))),
+                        Term::Nonterminal(Nonterminal(String::from("R"))),
+                    ],
+                },
+                // <R <>>
+                Rule {
+                    left: Nonterminal(String::from("R")),
+                    right: vec![],
+                },
+                // <T <open nterm P close>>
+                Rule {
+                    left: Nonterminal(String::from("T")),
+                    right: vec![
+                        Term::Terminal(Terminal(String::from("open"))),
+                        Term::Terminal(Terminal(String::from("nterm"))),
+                        Term::Nonterminal(Nonterminal(String::from("P"))),
+                        Term::Terminal(Terminal(String::from("close"))),
+                    ],
+                },
+                // <P  <open I close P>>
+                Rule {
+                    left: Nonterminal(String::from("P")),
+                    right: vec![
+                        Term::Terminal(Terminal(String::from("open"))),
+                        Term::Nonterminal(Nonterminal(String::from("I"))),
+                        Term::Terminal(Terminal(String::from("close"))),
+                        Term::Nonterminal(Nonterminal(String::from("P"))),
+                    ],
+                },
+                // <P <>>
+                Rule {
+                    left: Nonterminal(String::from("P")),
+                    right: vec![],
+                },
+                // <I  <term I>>
+                Rule {
+                    left: Nonterminal(String::from("I")),
+                    right: vec![
+                        Term::Terminal(Terminal(String::from("term"))),
+                        Term::Nonterminal(Nonterminal(String::from("I"))),
+                    ],
+                },
+                // <I  <nterm I>>
+                Rule {
+                    left: Nonterminal(String::from("I")),
+                    right: vec![
+                        Term::Terminal(Terminal(String::from("nterm"))),
+                        Term::Nonterminal(Nonterminal(String::from("I"))),
+                    ],
+                },
+                // <I  <>>
+                Rule {
+                    left: Nonterminal(String::from("I")),
+                    right: vec![],
+                },
+            ],
+        };
+        add_fake_axiom(&mut grammar);
+        grammar
     }
 }
