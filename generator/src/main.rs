@@ -1,6 +1,6 @@
+use generator::parser::{self, ParseTables, ParseTree};
+use generator::{self, DetermenisticLR1Automaton, Lexer, NonDeterministicLR1Automaton};
 use std::env;
-use generator::{self,Lexer,NonDeterministicLR1Automaton,DetermenisticLR1Automaton};
-use generator::parser::{self, ParseTree,ParseTables};
 use std::fs;
 
 fn main() {

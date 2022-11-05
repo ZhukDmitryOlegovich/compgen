@@ -1,7 +1,7 @@
 pub mod parser;
 mod tests;
 
-use crate::parser::{Terminal, TerminalOrFinish, Token, ParseTree};
+use crate::parser::{ParseTree, Terminal, TerminalOrFinish, Token};
 
 pub struct Lexer {
     cur: Coordinate,
@@ -11,7 +11,11 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(input: &str) -> Self {
         Lexer {
-            cur: Coordinate { line: 1, column: 1, index: 0 },
+            cur: Coordinate {
+                line: 1,
+                column: 1,
+                index: 0,
+            },
             input: String::from(input),
         }
     }
@@ -62,11 +66,14 @@ impl Lexer {
             }
             None => Some(Token {
                 tag: TerminalOrFinish::Finish,
-                attribute: TokenAttribute { fragment: Fragment {
-                    begin: begin.clone(),
-                    end: begin.clone(),
-                }, domain_attribute: DomainAttribute::None, }
-            })
+                attribute: TokenAttribute {
+                    fragment: Fragment {
+                        begin: begin.clone(),
+                        end: begin.clone(),
+                    },
+                    domain_attribute: DomainAttribute::None,
+                },
+            }),
         }
     }
 
@@ -125,9 +132,9 @@ impl<T> ParseTree<T> {
 
 pub fn evaluate_from_string(expr: &str) -> Option<f64> {
     let mut lexer = Lexer::new(expr);
-    let tokens = lexer.get_tokens().unwrap();
+    let tokens = lexer.get_tokens()?;
     let tables = parser::get_parse_tables();
-    let tree = ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
+    let tree = ParseTree::from_tables_and_tokens(&tables, &tokens)?;
     evaluate_from_tree(&tree)
 }
 
@@ -170,7 +177,7 @@ fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Option<f64> {
             if res == 0.0 {
                 return None;
             }
-            return Some(1.0/res);
+            return Some(1.0 / res);
         }
         Some(res)
     }

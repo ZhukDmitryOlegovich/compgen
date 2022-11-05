@@ -268,7 +268,7 @@ mod tests {
 
         let not_cbs = strings_to_tokens(&["(", ")", "(", "(", ")"]);
         let res = ParseTree::from_tables_and_tokens(&tables, &not_cbs);
-        assert!(res.is_none());
+        println!("{:?}", res.expect_err("mskekg"));
     }
 
     #[test]
@@ -284,7 +284,7 @@ mod tests {
 
         let incorrect = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", ")"]);
         let res = ParseTree::from_tables_and_tokens(&tables, &incorrect);
-        assert!(res.is_none());
+        assert!(res.is_err());
     }
 
     #[test]
@@ -356,7 +356,6 @@ mod tests {
         println!("{}", tables.to_rust_source().unwrap());
     }
 
-
     fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
         v.into_iter()
             .map(|x| Token::<()> {
@@ -369,5 +368,4 @@ mod tests {
             }])
             .collect()
     }
-
 }
