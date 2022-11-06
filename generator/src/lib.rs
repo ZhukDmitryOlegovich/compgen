@@ -1,4 +1,5 @@
 pub mod parser;
+#[cfg(test)]
 mod tests;
 
 use crate::parser::*;
@@ -131,7 +132,7 @@ impl LR0Item {
     fn from_lr1_item(item: &LR1Item) -> LR0Item {
         LR0Item {
             rule: item.rule.clone(),
-            position: item.position.clone(),
+            position: item.position,
         }
     }
 }
@@ -151,12 +152,12 @@ impl ToString for LR1Item {
         if i == self.position {
             right_str.push('^');
         }
-        String::from(format!(
+        format!(
             "{} -> {}, {}",
             self.rule.left.0,
             right_str,
             self.lookup.to_string()
-        ))
+        )
     }
 }
 
@@ -256,44 +257,6 @@ impl NonDeterministicLR1Automaton {
             }
         }
     }
-
-    fn to_graphviz(self: &Self) -> String {
-        let mut result = String::from("digraph G {\nrankdir=\"LR\"\n");
-        let mut ids: HashMap<&LR1Item, i32> = HashMap::new();
-        let mut cur = 0;
-        for (item, _) in &self.edges {
-            let color = match item.is_finish() {
-                true => "red",
-                false => "black",
-            };
-            result += format!(
-                r#"{} [label="{}", shape="rectangle", color="{}"]"#,
-                cur,
-                item.to_string(),
-                color
-            )
-            .as_str();
-            result += "\n";
-            ids.insert(item, cur);
-            cur += 1;
-        }
-        result += "fake [style=\"invis\"]\n";
-        result += format!("fake -> {}\n", ids[&self.start]).as_ref();
-        for (item, adjacent) in &self.edges {
-            for (other_item, term) in adjacent {
-                let id1 = ids[item];
-                let id2 = ids[other_item];
-                let term_str = match term {
-                    TermOrEmpty::Term(t) => t.to_string(),
-                    TermOrEmpty::Empty => String::from("EPS"),
-                };
-                result += format!(r#"{id1} -> {id2} [label="{term_str}"]"#).as_str();
-                result += "\n";
-            }
-        }
-        result += "}\n";
-        result
-    }
 }
 
 impl NonDeterministicLR1Automaton {
@@ -367,45 +330,6 @@ impl DetermenisticLR1Automaton {
             }
         }
     }
-
-    fn to_graphviz(&self) -> String {
-        let mut result = String::from("digraph G {\nrankdir=\"LR\"\n");
-        let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
-        let mut cur = 0;
-        for (items, _) in &self.edges {
-            let end = items.iter().find(|x| x.is_finish());
-            let color = match end {
-                Some(_) => "red",
-                None => "black",
-            };
-            result += format!(
-                "{} [shape=\"rectangle\",label=\"{}\", color=\"{}\"]\n",
-                cur,
-                Self::node_to_graphviz(items),
-                color
-            )
-            .as_ref();
-            ids.insert(items, cur);
-            cur += 1;
-        }
-        result += "fake [style=\"invis\"]\n";
-        result += format!("fake -> {}\n", ids[&self.start]).as_ref();
-        for (items, adjacent) in &self.edges {
-            for (other_items, term) in adjacent {
-                let id1 = ids[items];
-                let id2 = ids[other_items];
-                result += format!("{} -> {} [label=\"{}\"]\n", id1, id2, term.to_string()).as_ref();
-            }
-        }
-        result += "}\n";
-        result
-    }
-
-    fn node_to_graphviz(items: &BTreeSet<LR1Item>) -> String {
-        items
-            .iter()
-            .fold(String::new(), |x, y| x + y.to_string().as_ref() + "\\n")
-    }
 }
 
 impl ToString for LR1Action {
@@ -431,7 +355,7 @@ impl ParseTables {
         let mut cur = 0;
         let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
         let mut lr0_ids: HashMap<BTreeSet<LR0Item>, i32> = HashMap::new();
-        for (item, _) in &automaton.edges {
+        for item in automaton.edges.keys() {
             match tables_type {
                 ParseTablesType::LR1 => {
                     ids.insert(item, cur);
@@ -439,7 +363,7 @@ impl ParseTables {
                 }
                 ParseTablesType::LALR => {
                     let lr0_kernel: BTreeSet<LR0Item> =
-                        item.iter().map(|x| LR0Item::from_lr1_item(x)).collect();
+                        item.iter().map(LR0Item::from_lr1_item).collect();
                     if !lr0_ids.contains_key(&lr0_kernel) {
                         lr0_ids.insert(lr0_kernel.clone(), cur);
                         cur += 1;
@@ -501,18 +425,6 @@ impl ParseTables {
         }
     }
 
-    fn print(&self) {
-        println!("Start: {}", self.start);
-        println!("\nAction:");
-        for ((state, term), action) in &self.action {
-            println!("({}x{})->{}", state, term.to_string(), action.to_string());
-        }
-        println!("\nGoto:");
-        for ((state, term), new_state) in &self.goto {
-            println!("({}x{})->{}", state, term.0, new_state);
-        }
-    }
-
     pub fn to_rust_source(&self) -> String {
         let parser_source = include_bytes!("parser.rs");
         let parser_source: Vec<String> = String::from_utf8_lossy(parser_source)
@@ -528,15 +440,12 @@ impl ParseTables {
             .position(|x| x.starts_with("//@END_PARSE_TABLES@"))
             .expect("no @END_Pno @END_PARSE_TABLES@ comment in parser.rs");
         let tables = self.to_rust_function();
-        let res = [
-            parser_source[0..=start_index].join("\n").clone(),
+        [
+            parser_source[0..=start_index].join("\n"),
             tables,
-            parser_source[finish_index..parser_source.len()]
-                .join("\n")
-                .clone(),
+            parser_source[finish_index..parser_source.len()].join("\n"),
         ]
-        .join("\n");
-        res.clone()
+        .join("\n")
     }
 
     fn to_rust_function(&self) -> String {
@@ -772,16 +681,11 @@ impl<'a> Lexer<'a> {
         F: Fn(char) -> bool,
     {
         let mut res = String::new();
-        loop {
-            match self.peek() {
-                Some(c) => {
-                    if !p(c) {
-                        break;
-                    }
-                    res += c.to_string().as_ref();
-                }
-                None => break,
+        while let Some(c) = self.peek() {
+            if !p(c) {
+                break;
             }
+            res += c.to_string().as_ref();
             self.next();
         }
         res
@@ -805,16 +709,13 @@ impl<'a> Lexer<'a> {
     }
 
     fn next(&mut self) {
-        match self.peek() {
-            Some(t) => {
-                if t == '\n' {
-                    self.cur.line += 1;
-                    self.cur.column = 1;
-                } else {
-                    self.cur.column += 1;
-                }
+        if let Some(t) = self.peek() {
+            if t == '\n' {
+                self.cur.line += 1;
+                self.cur.column = 1;
+            } else {
+                self.cur.column += 1;
             }
-            _ => (),
         }
         self.cur.index += 1;
     }
@@ -867,7 +768,7 @@ pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Grammar {
 
 fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
     if let ParseTree::Internal(_, children) = root {
-        if children.len() == 0 {
+        if children.is_empty() {
             return Vec::new();
         }
         let right = get_rules_from_tree(&children[1]);
@@ -889,7 +790,7 @@ fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
 
 fn get_subrules_from_tree(nterm: &Nonterminal, root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
     if let ParseTree::Internal(_, children) = root {
-        if children.len() == 0 {
+        if children.is_empty() {
             return Vec::new();
         }
         let right = get_subrules_from_tree(nterm, &children[3]);
@@ -905,8 +806,8 @@ fn get_subrules_from_tree(nterm: &Nonterminal, root: &ParseTree<TokenAttribute>)
 }
 
 fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Vec<Term> {
-    if let ParseTree::Internal(nterm, children) = root {
-        if children.len() == 0 {
+    if let ParseTree::Internal(_, children) = root {
+        if children.is_empty() {
             return Vec::new();
         }
         let right = get_terms_from_subtree(&children[1]);

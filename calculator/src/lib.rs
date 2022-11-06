@@ -1,5 +1,8 @@
 pub mod parser;
+#[cfg(test)]
 mod tests;
+
+use std::fmt::Display;
 
 use parser::ParseError;
 
@@ -17,7 +20,31 @@ pub enum CalculatorError {
     ZeroDivisionError,
 }
 
-impl<'a> From<ParseError<TokenAttribute>> for CalculatorError {
+impl Display for CalculatorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let res = match self {
+            CalculatorError::LexerError(coord) => {
+                format!("Unexpected character at {}:{}", coord.line, coord.column)
+            }
+            CalculatorError::ParserError(err) => {
+                let begin = &err.token.attribute.fragment.begin;
+                let end = &err.token.attribute.fragment.end;
+                let name = match &err.token.tag {
+                    TerminalOrFinish::Terminal(t) => &t.0,
+                    TerminalOrFinish::Finish => "EOF",
+                };
+                format!(
+                    "Unexpected token {} at {}:{}-{}:{}",
+                    name, begin.line, begin.column, end.line, end.column,
+                )
+            }
+            CalculatorError::ZeroDivisionError => String::from("Zero division encountered"),
+        };
+        f.write_str(&res)
+    }
+}
+
+impl From<ParseError<TokenAttribute>> for CalculatorError {
     fn from(err: ParseError<TokenAttribute>) -> Self {
         CalculatorError::ParserError(err)
     }
@@ -58,25 +85,25 @@ impl Lexer {
                         .parse::<i32>()
                         .unwrap();
                     let end = self.cur.clone();
-                    return Ok(Token {
+                    Ok(Token {
                         tag: TerminalOrFinish::Terminal(Terminal(String::from("n"))),
                         attribute: TokenAttribute {
                             fragment: Fragment { begin, end },
                             domain_attribute: DomainAttribute::Number(n),
                         },
-                    });
+                    })
                 } else if ['+', '-', '*', '/', '(', ')'].contains(&cur) {
                     self.next();
                     let end = self.cur.clone();
-                    return Ok(Token {
-                        tag: TerminalOrFinish::Terminal(Terminal(String::from(String::from(cur)))),
+                    Ok(Token {
+                        tag: TerminalOrFinish::Terminal(Terminal(String::from(cur))),
                         attribute: TokenAttribute {
                             fragment: Fragment { begin, end },
                             domain_attribute: DomainAttribute::None,
                         },
-                    });
+                    })
                 } else {
-                    return Err(CalculatorError::LexerError(self.cur.clone()));
+                    Err(CalculatorError::LexerError(self.cur.clone()))
                 }
             }
             None => Ok(Token {
@@ -84,7 +111,7 @@ impl Lexer {
                 attribute: TokenAttribute {
                     fragment: Fragment {
                         begin: begin.clone(),
-                        end: begin.clone(),
+                        end: begin,
                     },
                     domain_attribute: DomainAttribute::None,
                 },
@@ -132,7 +159,7 @@ impl Lexer {
 impl<T> ParseTree<T> {
     fn as_internal(&self) -> Option<(&parser::Nonterminal, &Vec<ParseTree<T>>)> {
         if let ParseTree::Internal(nterm, children) = self {
-            return Some((&nterm, &children));
+            return Some((nterm, children));
         }
         None
     }
@@ -166,7 +193,7 @@ fn evaluate_from_tree(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calculato
 //    <>>
 fn evaluate_from_tree_et(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
     let (_, children) = tree.as_internal().expect("must be internal node");
-    if children.len() == 0 {
+    if children.is_empty() {
         Ok(0.0)
     } else {
         let sign = children[0]
@@ -200,7 +227,7 @@ fn evaluate_from_tree_t(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calcula
 //     <>>
 fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
     let (_, children) = tree.as_internal().expect("must be internal node");
-    if children.len() == 0 {
+    if children.is_empty() {
         Ok(1.0)
     } else {
         let sign = children[0]
@@ -257,7 +284,7 @@ pub enum DomainAttribute {
 impl DomainAttribute {
     fn as_number(&self) -> Option<i32> {
         if let DomainAttribute::Number(n) = self {
-            return Some(n.clone());
+            return Some(*n);
         }
         None
     }
