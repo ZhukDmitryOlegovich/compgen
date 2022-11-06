@@ -1,12 +1,14 @@
 use generator::parser::ParseTables;
-use std::env;
-use std::fs;
+use std::io;
 use std::process;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let grammar_file = args[1].clone();
-    let grammar = fs::read_to_string(grammar_file).unwrap();
+    let mut grammar = String::new();
+    for line in io::stdin().lines() {
+        let line = line.unwrap();
+        grammar.push_str(&line);
+        grammar.push('\n');
+    }
     let res = ParseTables::from_string(&grammar, generator::ParseTablesType::LALR);
     match res {
         Ok(tables) => {

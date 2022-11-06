@@ -251,38 +251,42 @@ fn test_tables_arithmetic() {
 
 #[test]
 fn test_parse_cbs() {
-    let grammar = get_cbs_grammar();
-    let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
-    let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
+    for method in [ParseTablesType::LR1, ParseTablesType::LALR] {
+        let grammar = get_cbs_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        let tables = ParseTables::from_automaton(&dfa, method).unwrap();
 
-    let empty_cbs = strings_to_tokens(&[]);
-    let res = ParseTree::from_tables_and_tokens(&tables, &empty_cbs);
-    println!("{}", res.expect("no parse tree was returned").to_graphviz());
+        let empty_cbs = strings_to_tokens(&[]);
+        let res = ParseTree::from_tables_and_tokens(&tables, &empty_cbs);
+        println!("{}", res.expect("no parse tree was returned").to_graphviz());
 
-    let cbs = strings_to_tokens(&["(", ")", "(", "(", ")", ")"]);
-    let res = ParseTree::from_tables_and_tokens(&tables, &cbs);
-    println!("{}", res.expect("no parse tree was returned").to_graphviz());
+        let cbs = strings_to_tokens(&["(", ")", "(", "(", ")", ")"]);
+        let res = ParseTree::from_tables_and_tokens(&tables, &cbs);
+        println!("{}", res.expect("no parse tree was returned").to_graphviz());
 
-    let not_cbs = strings_to_tokens(&["(", ")", "(", "(", ")"]);
-    let res = ParseTree::from_tables_and_tokens(&tables, &not_cbs);
-    println!("{:?}", res.expect_err("mskekg"));
+        let not_cbs = strings_to_tokens(&["(", ")", "(", "(", ")"]);
+        let res = ParseTree::from_tables_and_tokens(&tables, &not_cbs);
+        println!("{:?}", res.expect_err("mskekg"));
+    }
 }
 
 #[test]
 fn test_parse_arithmetic() {
-    let grammar = get_arithmetic_grammar();
-    let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
-    let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
+    for method in [ParseTablesType::LR1, ParseTablesType::LALR] {
+        let grammar = get_arithmetic_grammar();
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        let tables = ParseTables::from_automaton(&dfa, method).unwrap();
 
-    let correct = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", "x", ")"]);
-    let res = ParseTree::from_tables_and_tokens(&tables, &correct);
-    println!("{}", res.expect("no parse tree was returned").to_graphviz());
+        let correct = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", "x", ")"]);
+        let res = ParseTree::from_tables_and_tokens(&tables, &correct);
+        println!("{}", res.expect("no parse tree was returned").to_graphviz());
 
-    let incorrect = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", ")"]);
-    let res = ParseTree::from_tables_and_tokens(&tables, &incorrect);
-    assert!(res.is_err());
+        let incorrect = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", ")"]);
+        let res = ParseTree::from_tables_and_tokens(&tables, &incorrect);
+        assert!(res.is_err());
+    }
 }
 
 #[test]

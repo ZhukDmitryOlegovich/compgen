@@ -392,8 +392,8 @@ fn try_add_action(
     term: TerminalOrFinish,
     action: LR1Action,
 ) -> Result<(), GeneratorError> {
-    match tables.action.get(&(state, term.clone())) {
-        Some(other_action) => {
+    if let Some(other_action) = tables.action.get(&(state, term.clone())) {
+        if *other_action != action {
             let actions = [&action, other_action];
             for action in actions {
                 if let LR1Action::Shift(_) = action {
@@ -402,10 +402,8 @@ fn try_add_action(
             }
             return Err(GeneratorError::ReduceReduceConflict);
         }
-        None => {
-            tables.action.insert((state, term), action);
-        }
-    }
+    };
+    tables.action.insert((state, term), action);
     Ok(())
 }
 
