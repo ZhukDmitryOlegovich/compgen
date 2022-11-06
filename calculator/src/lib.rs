@@ -156,22 +156,6 @@ impl Lexer {
     }
 }
 
-impl<T> ParseTree<T> {
-    fn as_internal(&self) -> Option<(&parser::Nonterminal, &Vec<ParseTree<T>>)> {
-        if let ParseTree::Internal(nterm, children) = self {
-            return Some((nterm, children));
-        }
-        None
-    }
-
-    fn as_leaf(&self) -> Option<&parser::Token<T>> {
-        if let ParseTree::Leaf(term) = self {
-            return Some(term);
-        }
-        None
-    }
-}
-
 pub fn evaluate_from_string(expr: &str) -> Result<f64, CalculatorError> {
     let mut lexer = Lexer::new(expr);
     let tokens = lexer.get_tokens()?;
@@ -182,7 +166,7 @@ pub fn evaluate_from_string(expr: &str) -> Result<f64, CalculatorError> {
 
 // <E <T E'>>
 fn evaluate_from_tree(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
-    let (_, children) = tree.as_internal().expect("must be internal node");
+    let (_, children) = tree.as_internal().unwrap();
     let res1 = evaluate_from_tree_t(&children[0])?;
     let res2 = evaluate_from_tree_et(&children[1])?;
     Ok(res1 + res2)
@@ -192,16 +176,16 @@ fn evaluate_from_tree(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calculato
 //    <- T E'>
 //    <>>
 fn evaluate_from_tree_et(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
-    let (_, children) = tree.as_internal().expect("must be internal node");
+    let (_, children) = tree.as_internal().unwrap();
     if children.is_empty() {
         Ok(0.0)
     } else {
         let sign = children[0]
             .as_leaf()
-            .expect("must be leaf node")
+            .unwrap()
             .tag
             .as_terminal()
-            .expect("must be a terminal")
+            .unwrap()
             .0
             .clone();
         let res1 = evaluate_from_tree_t(&children[1])?;
@@ -216,7 +200,7 @@ fn evaluate_from_tree_et(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calcul
 
 // <T <F T'>>
 fn evaluate_from_tree_t(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
-    let (_, children) = tree.as_internal().expect("must be internal node");
+    let (_, children) = tree.as_internal().unwrap();
     let res1 = evaluate_from_tree_f(&children[0])?;
     let res2 = evaluate_from_tree_tt(&children[1])?;
     Ok(res1 * res2)
@@ -226,16 +210,16 @@ fn evaluate_from_tree_t(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calcula
 //     </ F T'>
 //     <>>
 fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
-    let (_, children) = tree.as_internal().expect("must be internal node");
+    let (_, children) = tree.as_internal().unwrap();
     if children.is_empty() {
         Ok(1.0)
     } else {
         let sign = children[0]
             .as_leaf()
-            .expect("must be leaf node")
+            .unwrap()
             .tag
             .as_terminal()
-            .expect("must be terminal")
+            .unwrap()
             .0
             .clone();
         let res1 = evaluate_from_tree_f(&children[1])?;
@@ -254,14 +238,10 @@ fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calcul
 // <F <n>
 //    <( E )>>
 fn evaluate_from_tree_f(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
-    let (_, children) = tree.as_internal().expect("must be internal node");
+    let (_, children) = tree.as_internal().unwrap();
     if children.len() == 1 {
-        let c = children[0].as_leaf().expect("must be leaf node");
-        let n = c
-            .attribute
-            .domain_attribute
-            .as_number()
-            .expect("must be number");
+        let c = children[0].as_leaf().unwrap();
+        let n = c.attribute.domain_attribute.as_number().unwrap();
         Ok(f64::from(n))
     } else {
         let c = &children[1];

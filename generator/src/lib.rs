@@ -818,6 +818,15 @@ enum TokenDomainAttribute {
     None,
 }
 
+impl TokenDomainAttribute {
+    fn as_nonterminal(&self) -> Option<String> {
+        if let TokenDomainAttribute::Nonterminal(s) = self {
+            return Some(s.clone());
+        }
+        None
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Clone)]
 struct Fragment {
     begin: Coord,
@@ -829,6 +838,71 @@ pub struct Coord {
     line: i32,
     column: i32,
     index: i32,
+}
+
+pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Result<Grammar, GeneratorError> {
+    let (_, root_children) = root.as_internal().unwrap();
+    let (_, children) = root_children[0].as_internal().unwrap();
+    let t = children[3].as_leaf().unwrap();
+    let axiom_name = t.attribute.domain_attribute.as_nonterminal().unwrap();
+    let axiom = Nonterminal(axiom_name);
+    let rules = get_rules_from_tree(&root_children[1]);
+    let mut grammar = Grammar { axiom, rules };
+    add_fake_axiom(&mut grammar);
+    validate_grammar(&grammar)?;
+    Ok(grammar)
+}
+
+fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
+    let (_, children) = root.as_internal().unwrap();
+    if children.is_empty() {
+        return Vec::new();
+    }
+    let right = get_rules_from_tree(&children[1]);
+    let (_, children) = &children[0].as_internal().unwrap();
+    let t = children[1].as_leaf().unwrap();
+    let name = t.attribute.domain_attribute.as_nonterminal().unwrap();
+    let left = Nonterminal(name);
+    let mut rules = get_subrules_from_tree(&left, &children[2]);
+    rules.extend(right);
+    rules
+}
+
+fn get_subrules_from_tree(left: &Nonterminal, root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
+    let (_, children) = root.as_internal().unwrap();
+    if children.is_empty() {
+        return Vec::new();
+    }
+    let right = get_subrules_from_tree(left, &children[3]);
+    let terms = get_terms_from_subtree(&children[1]);
+    let mut res = vec![Rule {
+        left: left.clone(),
+        right: terms,
+    }];
+    res.extend(right);
+    res
+}
+
+fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Vec<Term> {
+    let (_, children) = root.as_internal().unwrap();
+    if children.is_empty() {
+        return Vec::new();
+    }
+    let right = get_terms_from_subtree(&children[1]);
+    let t = children[0].as_leaf().unwrap();
+    match t.attribute.domain_attribute.clone() {
+        TokenDomainAttribute::Nonterminal(nterm) => {
+            let mut res = vec![Term::Nonterminal(Nonterminal(nterm))];
+            res.extend(right);
+            res
+        }
+        TokenDomainAttribute::Terminal(term) => {
+            let mut res = vec![Term::Terminal(Terminal(term))];
+            res.extend(right);
+            res
+        }
+        _ => panic!("must be terminal or nonterminal"),
+    }
 }
 
 fn validate_grammar(grammar: &Grammar) -> Result<(), GeneratorError> {
@@ -843,88 +917,4 @@ fn validate_grammar(grammar: &Grammar) -> Result<(), GeneratorError> {
         }
     }
     Ok(())
-}
-
-pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Result<Grammar, GeneratorError> {
-    if let ParseTree::Internal(_, root_children) = root {
-        if let ParseTree::Internal(_, children) = &root_children[0] {
-            if let ParseTree::Leaf(t) = &children[3] {
-                if let TokenDomainAttribute::Nonterminal(axiom_name) =
-                    t.attribute.domain_attribute.clone()
-                {
-                    let axiom = Nonterminal(axiom_name);
-                    let rules = get_rules_from_tree(&root_children[1]);
-                    let mut grammar = Grammar { axiom, rules };
-                    add_fake_axiom(&mut grammar);
-                    validate_grammar(&grammar)?;
-                    return Ok(grammar);
-                }
-            }
-        }
-    }
-    panic!("");
-}
-
-fn get_rules_from_tree(root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
-    if let ParseTree::Internal(_, children) = root {
-        if children.is_empty() {
-            return Vec::new();
-        }
-        let right = get_rules_from_tree(&children[1]);
-        if let ParseTree::Internal(_, children) = &children[0] {
-            if let ParseTree::Leaf(t) = &children[1] {
-                if let TokenDomainAttribute::Nonterminal(name) =
-                    t.attribute.domain_attribute.clone()
-                {
-                    let nterm = Nonterminal(name);
-                    let mut rules = get_subrules_from_tree(&nterm, &children[2]);
-                    rules.extend(right);
-                    return rules;
-                }
-            }
-        }
-    }
-    panic!("");
-}
-
-fn get_subrules_from_tree(nterm: &Nonterminal, root: &ParseTree<TokenAttribute>) -> Vec<Rule> {
-    if let ParseTree::Internal(_, children) = root {
-        if children.is_empty() {
-            return Vec::new();
-        }
-        let right = get_subrules_from_tree(nterm, &children[3]);
-        let terms = get_terms_from_subtree(&children[1]);
-        let mut res = vec![Rule {
-            left: nterm.clone(),
-            right: terms,
-        }];
-        res.extend(right);
-        return res;
-    }
-    panic!("");
-}
-
-fn get_terms_from_subtree(root: &ParseTree<TokenAttribute>) -> Vec<Term> {
-    if let ParseTree::Internal(_, children) = root {
-        if children.is_empty() {
-            return Vec::new();
-        }
-        let right = get_terms_from_subtree(&children[1]);
-        if let ParseTree::Leaf(t) = &children[0] {
-            match t.attribute.domain_attribute.clone() {
-                TokenDomainAttribute::Nonterminal(nterm) => {
-                    let mut res = vec![Term::Nonterminal(Nonterminal(nterm))];
-                    res.extend(right);
-                    return res;
-                }
-                TokenDomainAttribute::Terminal(term) => {
-                    let mut res = vec![Term::Terminal(Terminal(term))];
-                    res.extend(right);
-                    return res;
-                }
-                _ => (),
-            }
-        }
-    }
-    panic!("");
 }
