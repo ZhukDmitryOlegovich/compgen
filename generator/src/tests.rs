@@ -354,6 +354,34 @@ fn test_tables_to_source() {
     println!("{}", tables.to_rust_source());
 }
 
+#[test]
+fn test_not_lr1() {
+    let input = r"
+    <axiom <S>>
+    <S <>
+       <a S a>>";
+    let res = ParseTables::from_string(input, ParseTablesType::LR1);
+    let err = res.unwrap_err();
+    assert!(matches!(err, GeneratorError::ShiftReduceConflict));
+}
+
+#[test]
+fn test_not_lalr() {
+    let input = r"
+    <axiom <S>>
+    <S <a E a>
+       <b E b>
+       <a F b>
+       <b F a>>
+    <E <e>>
+    <F <e>>";
+    let res = ParseTables::from_string(input, ParseTablesType::LALR);
+    let err = res.unwrap_err();
+    assert!(matches!(err, GeneratorError::ReduceReduceConflict));
+    let res = ParseTables::from_string(input, ParseTablesType::LR1);
+    assert!(res.is_ok());
+}
+
 fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {
     v.iter()
         .map(|x| Token::<()> {
