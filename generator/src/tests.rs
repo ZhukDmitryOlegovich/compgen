@@ -332,7 +332,7 @@ fn test_parse_meta_grammar() {
     let tree = ParseTree::from_tables_and_tokens(&tables, &tokens).unwrap();
     println!("{}", tree.to_graphviz());
 
-    let parsed = get_grammar_from_tree(&tree);
+    let parsed = get_grammar_from_tree(&tree).unwrap();
     assert_eq!(parsed, grammar);
 }
 
@@ -356,7 +356,7 @@ fn test_tables_to_source() {
 
 #[test]
 fn test_not_lr1() {
-    let input = r"
+    let input = "
     <axiom <S>>
     <S <>
        <a S a>>";
@@ -367,7 +367,7 @@ fn test_not_lr1() {
 
 #[test]
 fn test_not_lalr() {
-    let input = r"
+    let input = "
     <axiom <S>>
     <S <a E a>
        <b E b>
@@ -380,6 +380,20 @@ fn test_not_lalr() {
     assert!(matches!(err, GeneratorError::ReduceReduceConflict));
     let res = ParseTables::from_string(input, ParseTablesType::LR1);
     assert!(res.is_ok());
+}
+
+#[test]
+fn test_undeclared_nterm_usage() {
+    let input = "
+    <axiom <S>>
+    <S <A>>";
+    let res = ParseTables::from_string(input, ParseTablesType::LR1);
+    let err = res.unwrap_err();
+    let ok = match err {
+        GeneratorError::UndeclaredNonterminal(nterm) => nterm.0 == "A",
+        _ => false,
+    };
+    assert!(ok);
 }
 
 fn strings_to_tokens(v: &[&str]) -> Vec<Token<()>> {

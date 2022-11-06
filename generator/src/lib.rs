@@ -15,6 +15,7 @@ use std::{
 #[derive(Debug)]
 pub enum GeneratorError {
     ParseError(ParseError<TokenAttribute>),
+    UndeclaredNonterminal(Nonterminal),
     ShiftReduceConflict,
     ReduceReduceConflict,
 }
@@ -39,6 +40,9 @@ impl Display for GeneratorError {
             }
             GeneratorError::ReduceReduceConflict => {
                 String::from("Encountered reduce-reduce conflict while generating tables")
+            }
+            GeneratorError::UndeclaredNonterminal(nterm) => {
+                format!("Use of undeclared nonterminal: {}", nterm.0)
             }
         };
         f.write_str(&res)
@@ -419,7 +423,7 @@ impl ParseTables {
         let tokens = lexer.get_tokens();
         let tables = parser::get_parse_tables();
         let tree = ParseTree::from_tables_and_tokens(&tables, &tokens)?;
-        let encoded_grammar = get_grammar_from_tree(&tree);
+        let encoded_grammar = get_grammar_from_tree(&tree)?;
         let nfa = NonDeterministicLR1Automaton::from_grammar(&encoded_grammar);
         let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
         ParseTables::from_automaton(&dfa, tables_type)
@@ -493,7 +497,7 @@ impl ParseTables {
             if item.is_finish() {
                 if item.rule.left.0 == GRAMMAR_AXIOM_NAME {
                     try_add_action(res, id, TerminalOrFinish::Finish, LR1Action::Accept)
-                        .expect("accept can have conflicts");
+                        .expect("accept can not have conflicts");
                 } else {
                     try_add_action(
                         res,
@@ -829,7 +833,21 @@ pub struct Coord {
     index: i32,
 }
 
-pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Grammar {
+fn validate_grammar(grammar: &Grammar) -> Result<(), GeneratorError> {
+    let left: HashSet<Nonterminal> = grammar.rules.iter().map(|x| x.left.clone()).collect();
+    for rule in &grammar.rules {
+        for term in &rule.right {
+            if let Term::Nonterminal(nterm) = term {
+                if !left.contains(nterm) {
+                    return Err(GeneratorError::UndeclaredNonterminal(nterm.clone()));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Result<Grammar, GeneratorError> {
     if let ParseTree::Internal(_, root_children) = root {
         if let ParseTree::Internal(_, children) = &root_children[0] {
             if let ParseTree::Leaf(t) = &children[3] {
@@ -840,7 +858,8 @@ pub fn get_grammar_from_tree(root: &ParseTree<TokenAttribute>) -> Grammar {
                     let rules = get_rules_from_tree(&root_children[1]);
                     let mut grammar = Grammar { axiom, rules };
                     add_fake_axiom(&mut grammar);
-                    return grammar;
+                    validate_grammar(&grammar)?;
+                    return Ok(grammar);
                 }
             }
         }
