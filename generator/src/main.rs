@@ -9,12 +9,6 @@ struct Flags {
 }
 
 fn main() {
-    let mut grammar = String::new();
-    for line in io::stdin().lines() {
-        let line = line.unwrap();
-        grammar.push_str(&line);
-        grammar.push('\n');
-    }
     let mut flags = Flags {
         help: false,
         clr: false,
@@ -46,6 +40,12 @@ OPTIONS:
     } else {
         generator::ParseTablesType::LALR
     };
+    let mut grammar = String::new();
+    for line in io::stdin().lines() {
+        let line = line.unwrap();
+        grammar.push_str(&line);
+        grammar.push('\n');
+    }
     let res = ParseTables::from_string(&grammar, tables_type);
     match res {
         Ok(tables) => {
