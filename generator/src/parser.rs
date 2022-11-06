@@ -147,148 +147,52 @@ pub fn get_parse_tables() -> ParseTables {
     let action = [
         (
             (
-                22,
+                13,
                 TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
             ),
             LR1Action::Shift(21),
         ),
         (
             (
-                4,
-                TerminalOrFinish::Terminal(Terminal(String::from("term"))),
+                8,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
             ),
-            LR1Action::Shift(4),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("P")),
+                right: vec![],
+            }),
         ),
         (
-            (10, TerminalOrFinish::Finish),
+            (18, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T")),
+                left: Nonterminal(String::from("A")),
                 right: vec![
                     Term::Terminal(Terminal(String::from("open"))),
+                    Term::Terminal(Terminal(String::from("ax"))),
+                    Term::Terminal(Terminal(String::from("open"))),
                     Term::Terminal(Terminal(String::from("nterm"))),
-                    Term::Nonterminal(Nonterminal(String::from("P"))),
+                    Term::Terminal(Terminal(String::from("close"))),
                     Term::Terminal(Terminal(String::from("close"))),
                 ],
             }),
         ),
         (
             (
-                9,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Shift(10),
-        ),
-        (
-            (
-                21,
-                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
-            ),
-            LR1Action::Shift(21),
-        ),
-        (
-            (12, TerminalOrFinish::Terminal(Terminal(String::from("ax")))),
-            LR1Action::Shift(1),
-        ),
-        (
-            (
-                11,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("P")),
-                right: vec![],
-            }),
-        ),
-        (
-            (
-                15,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("P")),
-                right: vec![],
-            }),
-        ),
-        ((8, TerminalOrFinish::Finish), LR1Action::Accept),
-        (
-            (
-                21,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("I")),
-                right: vec![],
-            }),
-        ),
-        (
-            (
-                4,
-                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
-            ),
-            LR1Action::Shift(21),
-        ),
-        (
-            (
-                1,
-                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
-            ),
-            LR1Action::Shift(6),
-        ),
-        (
-            (
-                22,
-                TerminalOrFinish::Terminal(Terminal(String::from("term"))),
-            ),
-            LR1Action::Shift(4),
-        ),
-        (
-            (
-                4,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("I")),
-                right: vec![],
-            }),
-        ),
-        (
-            (
-                18,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Shift(5),
-        ),
-        (
-            (
-                21,
-                TerminalOrFinish::Terminal(Terminal(String::from("term"))),
-            ),
-            LR1Action::Shift(4),
-        ),
-        (
-            (
                 6,
-                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
-            ),
-            LR1Action::Shift(0),
-        ),
-        (
-            (
-                15,
                 TerminalOrFinish::Terminal(Terminal(String::from("open"))),
             ),
             LR1Action::Shift(22),
         ),
         (
             (
-                14,
-                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+                10,
+                TerminalOrFinish::Terminal(Terminal(String::from("term"))),
             ),
-            LR1Action::Shift(16),
+            LR1Action::Shift(11),
         ),
         (
             (
-                17,
+                1,
                 TerminalOrFinish::Terminal(Terminal(String::from("close"))),
             ),
             LR1Action::Reduce(Rule {
@@ -300,15 +204,8 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (14, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("R")),
-                right: vec![],
-            }),
-        ),
-        (
             (
-                13,
+                12,
                 TerminalOrFinish::Terminal(Terminal(String::from("close"))),
             ),
             LR1Action::Reduce(Rule {
@@ -320,21 +217,7 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (
-                0,
-                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
-            ),
-            LR1Action::Shift(18),
-        ),
-        (
-            (
-                2,
-                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
-            ),
-            LR1Action::Shift(16),
-        ),
-        (
-            (20, TerminalOrFinish::Finish),
+            (4, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("S")),
                 right: vec![
@@ -344,15 +227,40 @@ pub fn get_parse_tables() -> ParseTables {
             }),
         ),
         (
-            (2, TerminalOrFinish::Finish),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("R")),
-                right: vec![],
-            }),
+            (17, TerminalOrFinish::Terminal(Terminal(String::from("ax")))),
+            LR1Action::Shift(14),
         ),
         (
             (
-                22,
+                2,
+                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
+            ),
+            LR1Action::Shift(6),
+        ),
+        (
+            (
+                10,
+                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
+            ),
+            LR1Action::Shift(10),
+        ),
+        (
+            (
+                19,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+            ),
+            LR1Action::Shift(8),
+        ),
+        (
+            (
+                15,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+            ),
+            LR1Action::Shift(18),
+        ),
+        (
+            (
+                11,
                 TerminalOrFinish::Terminal(Terminal(String::from("close"))),
             ),
             LR1Action::Reduce(Rule {
@@ -366,6 +274,83 @@ pub fn get_parse_tables() -> ParseTables {
                 TerminalOrFinish::Terminal(Terminal(String::from("open"))),
             ),
             LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("T")),
+                right: vec![
+                    Term::Terminal(Terminal(String::from("open"))),
+                    Term::Terminal(Terminal(String::from("nterm"))),
+                    Term::Nonterminal(Nonterminal(String::from("P"))),
+                    Term::Terminal(Terminal(String::from("close"))),
+                ],
+            }),
+        ),
+        (
+            (23, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("R")),
+                right: vec![],
+            }),
+        ),
+        (
+            (
+                11,
+                TerminalOrFinish::Terminal(Terminal(String::from("term"))),
+            ),
+            LR1Action::Shift(11),
+        ),
+        (
+            (
+                21,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+            ),
+            LR1Action::Shift(15),
+        ),
+        (
+            (
+                10,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+            ),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("I")),
+                right: vec![],
+            }),
+        ),
+        (
+            (
+                7,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+            ),
+            LR1Action::Shift(5),
+        ),
+        (
+            (
+                8,
+                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+            ),
+            LR1Action::Shift(22),
+        ),
+        (
+            (
+                22,
+                TerminalOrFinish::Terminal(Terminal(String::from("close"))),
+            ),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("I")),
+                right: vec![],
+            }),
+        ),
+        (
+            (
+                22,
+                TerminalOrFinish::Terminal(Terminal(String::from("term"))),
+            ),
+            LR1Action::Shift(11),
+        ),
+        (
+            (
+                18,
+                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+            ),
+            LR1Action::Reduce(Rule {
                 left: Nonterminal(String::from("A")),
                 right: vec![
                     Term::Terminal(Terminal(String::from("open"))),
@@ -379,39 +364,31 @@ pub fn get_parse_tables() -> ParseTables {
         ),
         (
             (
-                10,
-                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
-            ),
-            LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("T")),
-                right: vec![
-                    Term::Terminal(Terminal(String::from("open"))),
-                    Term::Terminal(Terminal(String::from("nterm"))),
-                    Term::Nonterminal(Nonterminal(String::from("P"))),
-                    Term::Terminal(Terminal(String::from("close"))),
-                ],
-            }),
-        ),
-        (
-            (
-                19,
+                6,
                 TerminalOrFinish::Terminal(Terminal(String::from("close"))),
             ),
-            LR1Action::Shift(11),
-        ),
-        (
-            (23, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("R")),
-                right: vec![
-                    Term::Nonterminal(Nonterminal(String::from("T"))),
-                    Term::Nonterminal(Nonterminal(String::from("R"))),
-                ],
+                left: Nonterminal(String::from("P")),
+                right: vec![],
             }),
         ),
         (
             (
-                3,
+                23,
+                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+            ),
+            LR1Action::Shift(2),
+        ),
+        (
+            (
+                16,
+                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+            ),
+            LR1Action::Shift(17),
+        ),
+        (
+            (
+                20,
                 TerminalOrFinish::Terminal(Terminal(String::from("close"))),
             ),
             LR1Action::Reduce(Rule {
@@ -426,59 +403,82 @@ pub fn get_parse_tables() -> ParseTables {
         ),
         (
             (
-                11,
+                0,
                 TerminalOrFinish::Terminal(Terminal(String::from("open"))),
             ),
-            LR1Action::Shift(22),
-        ),
-        (
-            (
-                16,
-                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
-            ),
-            LR1Action::Shift(15),
-        ),
-        (
-            (
-                7,
-                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
-            ),
-            LR1Action::Shift(12),
+            LR1Action::Shift(2),
         ),
         (
             (5, TerminalOrFinish::Finish),
             LR1Action::Reduce(Rule {
-                left: Nonterminal(String::from("A")),
+                left: Nonterminal(String::from("T")),
                 right: vec![
                     Term::Terminal(Terminal(String::from("open"))),
-                    Term::Terminal(Terminal(String::from("ax"))),
-                    Term::Terminal(Terminal(String::from("open"))),
                     Term::Terminal(Terminal(String::from("nterm"))),
-                    Term::Terminal(Terminal(String::from("close"))),
+                    Term::Nonterminal(Nonterminal(String::from("P"))),
                     Term::Terminal(Terminal(String::from("close"))),
                 ],
+            }),
+        ),
+        (
+            (
+                22,
+                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
+            ),
+            LR1Action::Shift(10),
+        ),
+        (
+            (
+                11,
+                TerminalOrFinish::Terminal(Terminal(String::from("nterm"))),
+            ),
+            LR1Action::Shift(10),
+        ),
+        ((9, TerminalOrFinish::Finish), LR1Action::Accept),
+        (
+            (
+                14,
+                TerminalOrFinish::Terminal(Terminal(String::from("open"))),
+            ),
+            LR1Action::Shift(13),
+        ),
+        (
+            (3, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("R")),
+                right: vec![
+                    Term::Nonterminal(Nonterminal(String::from("T"))),
+                    Term::Nonterminal(Nonterminal(String::from("R"))),
+                ],
+            }),
+        ),
+        (
+            (0, TerminalOrFinish::Finish),
+            LR1Action::Reduce(Rule {
+                left: Nonterminal(String::from("R")),
+                right: vec![],
             }),
         ),
     ]
     .into_iter()
     .collect();
     let goto = [
-        ((2, Nonterminal(String::from("T"))), 14),
-        ((11, Nonterminal(String::from("P"))), 3),
-        ((14, Nonterminal(String::from("R"))), 23),
-        ((14, Nonterminal(String::from("T"))), 14),
-        ((7, Nonterminal(String::from("S"))), 8),
-        ((15, Nonterminal(String::from("P"))), 9),
-        ((21, Nonterminal(String::from("I"))), 17),
+        ((0, Nonterminal(String::from("T"))), 0),
+        ((23, Nonterminal(String::from("R"))), 4),
+        ((23, Nonterminal(String::from("T"))), 0),
+        ((0, Nonterminal(String::from("R"))), 3),
+        ((16, Nonterminal(String::from("S"))), 9),
+        ((10, Nonterminal(String::from("I"))), 1),
+        ((6, Nonterminal(String::from("P"))), 7),
+        ((16, Nonterminal(String::from("A"))), 23),
+        ((11, Nonterminal(String::from("I"))), 12),
+        ((8, Nonterminal(String::from("P"))), 20),
         ((22, Nonterminal(String::from("I"))), 19),
-        ((2, Nonterminal(String::from("R"))), 20),
-        ((7, Nonterminal(String::from("A"))), 2),
-        ((4, Nonterminal(String::from("I"))), 13),
     ]
     .into_iter()
     .collect();
     ParseTables {
-        start: 7,
+        start: 16,
         action,
         goto,
     }
