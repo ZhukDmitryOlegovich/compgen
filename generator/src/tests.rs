@@ -237,7 +237,7 @@ fn test_tables_cbs() {
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
     let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
-    tables.print();
+    tables.unwrap().print();
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn test_tables_arithmetic() {
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
     let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
-    tables.print();
+    tables.unwrap().print();
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn test_parse_cbs() {
     let grammar = get_cbs_grammar();
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
+    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
 
     let empty_cbs = strings_to_tokens(&[]);
     let res = ParseTree::from_tables_and_tokens(&tables, &empty_cbs);
@@ -274,7 +274,7 @@ fn test_parse_arithmetic() {
     let grammar = get_arithmetic_grammar();
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
+    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
 
     let correct = strings_to_tokens(&["x", "+", "x", "*", "(", "x", "+", "x", ")"]);
     let res = ParseTree::from_tables_and_tokens(&tables, &correct);
@@ -312,7 +312,7 @@ fn test_parse_meta_grammar() {
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
     println!("{}", dfa.to_graphviz());
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
+    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
     let mut lexer = Lexer::new(
         r#"
                 <axiom <S>>
@@ -341,7 +341,7 @@ fn test_tables_to_literal() {
     let grammar = get_meta_grammar();
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
+    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
     println!("{}", tables.to_rust_function());
 }
 
@@ -350,7 +350,7 @@ fn test_tables_to_source() {
     let grammar = get_meta_grammar();
     let nfa = NonDeterministicLR1Automaton::from_grammar(&grammar);
     let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
-    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1);
+    let tables = ParseTables::from_automaton(&dfa, ParseTablesType::LR1).unwrap();
     println!("{}", tables.to_rust_source());
 }
 

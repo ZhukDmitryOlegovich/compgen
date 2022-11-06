@@ -8,8 +8,48 @@ const GRAMMAR_AXIOM_NAME: &str = "ROOT";
 
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
+    fmt::Display,
     hash::Hash,
 };
+
+#[derive(Debug)]
+pub enum GeneratorError {
+    ParseError(ParseError<TokenAttribute>),
+    ShiftReduceConflict,
+    ReduceReduceConflict,
+}
+
+impl Display for GeneratorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let res = match self {
+            GeneratorError::ParseError(err) => {
+                let begin = &err.token.attribute.fragment.begin;
+                let end = &err.token.attribute.fragment.end;
+                let name = match &err.token.tag {
+                    TerminalOrFinish::Terminal(t) => &t.0,
+                    TerminalOrFinish::Finish => "EOF",
+                };
+                format!(
+                    "Unexpected token {} at {}:{}-{}:{}",
+                    name, begin.line, begin.column, end.line, end.column,
+                )
+            }
+            GeneratorError::ShiftReduceConflict => {
+                String::from("Encountered shift-reduce conflict while generating tables")
+            }
+            GeneratorError::ReduceReduceConflict => {
+                String::from("Encountered reduce-reduce conflict while generating tables")
+            }
+        };
+        f.write_str(&res)
+    }
+}
+
+impl From<ParseError<TokenAttribute>> for GeneratorError {
+    fn from(err: ParseError<TokenAttribute>) -> Self {
+        GeneratorError::ParseError(err)
+    }
+}
 
 impl ToString for Term {
     fn to_string(&self) -> String {
@@ -342,16 +382,53 @@ impl ToString for LR1Action {
     }
 }
 
+fn try_add_action(
+    tables: &mut ParseTables,
+    state: i32,
+    term: TerminalOrFinish,
+    action: LR1Action,
+) -> Result<(), GeneratorError> {
+    match tables.action.get(&(state, term.clone())) {
+        Some(other_action) => {
+            let actions = [&action, other_action];
+            for action in actions {
+                if let LR1Action::Shift(_) = action {
+                    return Err(GeneratorError::ShiftReduceConflict);
+                }
+            }
+            return Err(GeneratorError::ReduceReduceConflict);
+        }
+        None => {
+            tables.action.insert((state, term), action);
+        }
+    }
+    Ok(())
+}
+
 pub enum ParseTablesType {
     LR1,
     LALR,
 }
 
 impl ParseTables {
+    pub fn from_string(
+        input: &str,
+        tables_type: ParseTablesType,
+    ) -> Result<ParseTables, GeneratorError> {
+        let mut lexer = Lexer::new(input);
+        let tokens = lexer.get_tokens();
+        let tables = parser::get_parse_tables();
+        let tree = ParseTree::from_tables_and_tokens(&tables, &tokens)?;
+        let encoded_grammar = get_grammar_from_tree(&tree);
+        let nfa = NonDeterministicLR1Automaton::from_grammar(&encoded_grammar);
+        let dfa = DetermenisticLR1Automaton::from_non_deterministic(&nfa);
+        ParseTables::from_automaton(&dfa, tables_type)
+    }
+
     pub fn from_automaton(
         automaton: &DetermenisticLR1Automaton,
         tables_type: ParseTablesType,
-    ) -> ParseTables {
+    ) -> Result<ParseTables, GeneratorError> {
         let mut cur = 0;
         let mut ids: HashMap<&BTreeSet<LR1Item>, i32> = HashMap::new();
         let mut lr0_ids: HashMap<BTreeSet<LR0Item>, i32> = HashMap::new();
@@ -379,8 +456,8 @@ impl ParseTables {
             goto: HashMap::new(),
         };
         let mut visited = HashSet::new();
-        Self::from_automaton_rec(&automaton.start, &ids, &mut visited, automaton, &mut res);
-        res
+        Self::from_automaton_rec(&automaton.start, &ids, &mut visited, automaton, &mut res)?;
+        Ok(res)
     }
 
     fn from_automaton_rec<'a: 'b, 'b, 'c: 'b>(
@@ -389,10 +466,10 @@ impl ParseTables {
         visited: &mut HashSet<&'b BTreeSet<LR1Item>>,
         automaton: &'c DetermenisticLR1Automaton,
         res: &mut ParseTables,
-    ) {
+    ) -> Result<(), GeneratorError> {
         let id = ids[cur];
         if visited.contains(cur) {
-            return;
+            return Ok(());
         }
         visited.insert(cur);
         for (other, term) in &automaton.edges[cur] {
@@ -402,27 +479,32 @@ impl ParseTables {
                     res.goto.insert((id, term.clone()), other_id);
                 }
                 Term::Terminal(term) => {
-                    res.action.insert(
-                        (id, TerminalOrFinish::Terminal(term.clone())),
+                    try_add_action(
+                        res,
+                        id,
+                        TerminalOrFinish::Terminal(term.clone()),
                         LR1Action::Shift(other_id),
-                    );
+                    )?;
                 }
             }
-            Self::from_automaton_rec(other, ids, visited, automaton, res);
+            Self::from_automaton_rec(other, ids, visited, automaton, res)?;
         }
         for item in cur {
             if item.is_finish() {
                 if item.rule.left.0 == GRAMMAR_AXIOM_NAME {
-                    res.action
-                        .insert((id, TerminalOrFinish::Finish), LR1Action::Accept);
+                    try_add_action(res, id, TerminalOrFinish::Finish, LR1Action::Accept)
+                        .expect("accept can have conflicts");
                 } else {
-                    res.action.insert(
-                        (id, item.lookup.clone()),
+                    try_add_action(
+                        res,
+                        id,
+                        item.lookup.clone(),
                         LR1Action::Reduce(item.rule.clone()),
-                    );
+                    )?;
                 }
             }
         }
+        Ok(())
     }
 
     pub fn to_rust_source(&self) -> String {
