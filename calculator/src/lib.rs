@@ -239,10 +239,11 @@ fn evaluate_from_tree_tt(tree: &ParseTree<TokenAttribute>) -> Result<f64, Calcul
 //    <( E )>>
 fn evaluate_from_tree_f(tree: &ParseTree<TokenAttribute>) -> Result<f64, CalculatorError> {
     let (_, children) = tree.as_internal().unwrap();
-    if children.len() == 1 {
-        let c = children[0].as_leaf().unwrap();
+    if children.len() <= 2 {
+        let is_minus = children.len() == 2;
+        let c = children[if is_minus { 1 } else { 0 }].as_leaf().unwrap();
         let n = c.attribute.domain_attribute.as_number().unwrap();
-        Ok(f64::from(n))
+        Ok(f64::from(n) * (if is_minus { -1.0 } else { 1.0 }))
     } else {
         let c = &children[1];
         evaluate_from_tree(c)
